@@ -88,7 +88,7 @@
                             <td class="px-6 py-4 font-bold text-slate-900">#{{ b.id }}</td>
                             <td class="px-6 py-4 font-medium text-slate-900">{{ b.customer_name }}</td>
                             <td class="px-6 py-4 text-slate-600">{{ b.customer_phone }}</td>
-                            <td class="px-6 py-4">Room {{ b.room.room_number }} ({{ b.room.room_type }})</td>
+                            <td class="px-6 py-4">Room {{ b.room_number }} ({{ b.room_type }})</td>
                             <td class="px-6 py-4 font-mono text-slate-600">{{ b.check_in_date }} → {{ b.check_out_date }}</td>
                             <td class="px-6 py-4 font-bold text-slate-900">₱{{ b.total_price }}</td>
                             <td class="px-6 py-4">
@@ -142,7 +142,7 @@
                             <td class="px-6 py-4 font-bold text-slate-900">#{{ t.id }}</td>
                             <td class="px-6 py-4 font-medium text-slate-900">{{ t.customer_name }}</td>
                             <td class="px-6 py-4 text-slate-600">{{ t.customer_phone }}</td>
-                            <td class="px-6 py-4 font-bold text-amber-700">{{ t.table.table_number }} ({{ t.table.location_area }})</td>
+                            <td class="px-6 py-4 font-bold text-amber-700">{{ t.table_number }} ({{ t.location_area }})</td>
                             <td class="px-6 py-4 font-mono text-slate-600">{{ t.booking_date }} | {{ t.time_slot }}</td>
                             <td class="px-6 py-4 font-semibold text-slate-700">{{ t.pax }} Pax</td>
                             <td class="px-6 py-4">
