@@ -395,17 +395,47 @@ def pwa_service_worker():
     return response
 
 
+_BOOT_MONOTONIC = time.monotonic()
+_BOOT_TIME_PH = now_ph_str()
+_LAST_MONITOR_LOCK = threading.Lock()
+_LAST_MONITOR_HIT = {
+    'time_ph': None,
+    'path': None,
+    'method': None,
+    'user_agent': None,
+    'total_pings': 0
+}
+
+
+def _record_monitor_hit(path, method, ua):
+    clean_ua = (ua or 'Unknown')[:80]
+    with _LAST_MONITOR_LOCK:
+        _LAST_MONITOR_HIT['time_ph'] = now_ph_str()
+        _LAST_MONITOR_HIT['path'] = path
+        _LAST_MONITOR_HIT['method'] = method
+        _LAST_MONITOR_HIT['user_agent'] = clean_ua
+        _LAST_MONITOR_HIT['total_pings'] += 1
+    if not app.config.get('TESTING'):
+        print(f"[KEEPALIVE] {method} {path} from {clean_ua} at {now_ph_str()}", flush=True)
+
+
 @app.route('/health', methods=['GET', 'HEAD'])
 @app.route('/healthz', methods=['GET', 'HEAD'])
 @app.route('/ping', methods=['GET', 'HEAD'])
 def health_check():
     """Lightweight health check endpoint for uptime monitors and Render keep-alive."""
+    _record_monitor_hit(request.path, request.method, request.headers.get('User-Agent', ''))
     if request.method == 'HEAD':
         return Response(status=200, headers={'Cache-Control': 'no-store, no-cache'})
+    with _LAST_MONITOR_LOCK:
+        last_hit = dict(_LAST_MONITOR_HIT)
     resp = jsonify({
         'status': 'ok',
         'service': 'moonflower-booking-system',
-        'ph_time': now_ph_str()
+        'ph_time': now_ph_str(),
+        'booted_at_ph': _BOOT_TIME_PH,
+        'uptime_seconds': int(time.monotonic() - _BOOT_MONOTONIC),
+        'last_external_ping': last_hit
     })
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return resp, 200
@@ -414,8 +444,18 @@ def health_check():
 # ==========================================
 # 1. CUSTOMER PORTAL ROUTES
 # ==========================================
-@app.route('/')
+@app.route('/', methods=['GET', 'HEAD'])
 def home():
+    ua = request.headers.get('User-Agent', '')
+    ua_lower = ua.lower()
+    is_monitor = (
+        request.method == 'HEAD'
+        or any(k in ua_lower for k in ('uptimerobot', 'cron-job', 'betterstack', 'freshping', 'pingdom', 'healthcheck', 'render', 'keepalive'))
+    )
+    if is_monitor:
+        _record_monitor_hit('/', request.method, ua)
+    if request.method == 'HEAD':
+        return Response(status=200, headers={'Cache-Control': 'no-store, no-cache'})
     settings = get_site_settings()
     return render_template('index.html', settings=settings)
 
@@ -947,7 +987,18 @@ def build_dashboard_context():
         'total_foods': len(menu_list),
         'on_duty_staff': sum(1 for s in staff_list if s['is_on_duty']),
         'total_staff': len(staff_list),
-        'ph_time_now': now_ph_str()
+        'ph_time_now': now_ph_str(),
+        'booted_at_ph': _BOOT_TIME_PH,
+        'uptime_human': (
+            f"{int(time.monotonic() - _BOOT_MONOTONIC) // 3600}h {(int(time.monotonic() - _BOOT_MONOTONIC) % 3600) // 60}m"
+            if int(time.monotonic() - _BOOT_MONOTONIC) >= 3600
+            else f"{int(time.monotonic() - _BOOT_MONOTONIC) // 60}m {int(time.monotonic() - _BOOT_MONOTONIC) % 60}s"
+        ),
+        'last_ping_summary': (
+            f"{_LAST_MONITOR_HIT['time_ph']} ({_LAST_MONITOR_HIT['method']} {_LAST_MONITOR_HIT['path']} — {_LAST_MONITOR_HIT['user_agent']})"
+            if _LAST_MONITOR_HIT.get('time_ph')
+            else 'None received yet since last boot'
+        )
     }
 
     return {
