@@ -223,7 +223,7 @@ def book_table():
 
     return jsonify({'message': 'Table reservation saved!', 'reservation_id': new_reservation.id}), 201
 
-# ADMIN ROUTES
+# ADMIN ROUTES (Gi-optimize gamit ang explicit safe dicts aron walay error sa template)
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
@@ -236,8 +236,38 @@ def admin():
     if not session.get('is_admin'):
         return render_template('admin.html', authed=False)
 
-    room_bookings = RoomBooking.query.order_by(RoomBooking.id.desc()).all()
-    table_bookings = TableBooking.query.order_by(TableBooking.id.desc()).all()
+    # Safe room bookings data retrieval
+    rb_records = db.session.query(RoomBooking, Room).join(Room, RoomBooking.room_id == Room.id).order_by(RoomBooking.id.desc()).all()
+    room_bookings = []
+    for b, r in rb_records:
+        room_bookings.append({
+            'id': b.id,
+            'customer_name': b.customer_name,
+            'customer_phone': b.customer_phone,
+            'room_number': r.room_number,
+            'room_type': r.room_type,
+            'check_in_date': b.check_in_date,
+            'check_out_date': b.check_out_date,
+            'total_price': f"{b.total_price:,.2f}",
+            'status': b.status
+        })
+
+    # Safe table bookings data retrieval
+    tb_records = db.session.query(TableBooking, RestaurantTable).join(RestaurantTable, TableBooking.table_id == RestaurantTable.id).order_by(TableBooking.id.desc()).all()
+    table_bookings = []
+    for tb, t in tb_records:
+        table_bookings.append({
+            'id': tb.id,
+            'customer_name': tb.customer_name,
+            'customer_phone': tb.customer_phone,
+            'table_number': t.table_number,
+            'location_area': t.location_area,
+            'booking_date': tb.booking_date,
+            'time_slot': tb.time_slot,
+            'pax': tb.pax,
+            'status': tb.status
+        })
+
     return render_template('admin.html', authed=True, room_bookings=room_bookings, table_bookings=table_bookings)
 
 @app.route('/admin/logout')
@@ -251,11 +281,13 @@ def update_booking_status(booking_type, item_id, new_status):
         return redirect(url_for('admin'))
 
     if booking_type == 'room':
-        item = RoomBooking.query.get_or_404(item_id)
-        item.status = new_status
+        item = db.session.get(RoomBooking, item_id)
+        if item:
+            item.status = new_status
     elif booking_type == 'table':
-        item = TableBooking.query.get_or_404(item_id)
-        item.status = new_status
+        item = db.session.get(TableBooking, item_id)
+        if item:
+            item.status = new_status
 
     db.session.commit()
     return redirect(url_for('admin'))
