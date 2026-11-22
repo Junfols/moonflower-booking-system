@@ -1197,8 +1197,19 @@ def owner_portal():
     return redirect(url_for('admin', view='monitor'))
 
 
-@app.route('/admin', methods=['GET', 'POST'])
+@app.route('/admin', methods=['GET', 'HEAD', 'POST'])
 def admin():
+    ua = request.headers.get('User-Agent', '')
+    ua_lower = ua.lower()
+    is_monitor = (
+        request.method == 'HEAD'
+        or any(k in ua_lower for k in ('uptimerobot', 'cron-job', 'betterstack', 'freshping', 'pingdom', 'healthcheck', 'render', 'keepalive'))
+    )
+    if is_monitor and request.method in ('GET', 'HEAD'):
+        _record_monitor_hit('/admin', request.method, ua)
+    if request.method == 'HEAD':
+        return Response(status=200)
+
     if request.method == 'POST':
         pw = request.form.get('password')
         role_select = request.form.get('role_select', 'admin')
