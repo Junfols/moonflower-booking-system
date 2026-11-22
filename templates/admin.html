@@ -622,6 +622,17 @@
                         </div>
                     </div>
 
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="setAddress" class="form-label">Resort / Restaurant Address</label>
+                            <input type="text" id="setAddress" value="{{ settings.address }}" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="setContactEmail" class="form-label">Official Email</label>
+                            <input type="email" id="setContactEmail" value="{{ settings.contact_email }}" class="form-input">
+                        </div>
+                    </div>
+
                     <!-- HERO BANNER PHOTO UPLOADER -->
                     <div class="form-group" style="padding: 1rem; background: var(--bg-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
                         <label class="form-label">Main Resort Hero Banner Photo</label>
@@ -817,11 +828,11 @@
                     <div class="form-group">
                         <label for="editMenuCategory" class="form-label">Category *</label>
                         <select id="editMenuCategory" class="form-select">
+                            <option value="Japanese Fusion Rolls">Japanese Fusion Rolls</option>
+                            <option value="Appetizers & Snacks">Appetizers &amp; Snacks</option>
                             <option value="Main Course">Main Course</option>
-                            <option value="Seafood & Grill">Seafood &amp; Grill</option>
-                            <option value="Noodles & Platter">Noodles &amp; Platter</option>
-                            <option value="Rice & Sides">Rice &amp; Sides</option>
-                            <option value="Drinks & Desserts">Drinks &amp; Desserts</option>
+                            <option value="Drinks & Beers">Drinks &amp; Beers</option>
+                            <option value="Dessert">Dessert</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1159,6 +1170,8 @@
                 hero_subtitle: document.getElementById('setHeroSubtitle').value,
                 contact_phone: document.getElementById('setContactPhone').value,
                 gcash_number: document.getElementById('setGcashNumber').value,
+                address: document.getElementById('setAddress').value,
+                contact_email: document.getElementById('setContactEmail').value,
                 hero_image: document.getElementById('setHeroImage').value,
                 dining_image: document.getElementById('setDiningImage').value
             };

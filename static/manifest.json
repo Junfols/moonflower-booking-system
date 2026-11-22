@@ -1,7 +1,7 @@
 {
-  "name": "Moonflower Resort & Fine Dining",
-  "short_name": "Moonflower",
-  "description": "Book luxury resort rooms, pre-order from the restaurant food menu, pay via GCash or on arrival, and track your reservations.",
+  "name": "MoonFlower Garden Camiguin",
+  "short_name": "MoonFlower",
+  "description": "MoonFlower Garden Camiguin — Bar, Restaurant & Homemade Ice Cream (Since 2011). Book rooms, pre-order Japanese Fusion Rolls & Main Courses, and reserve indoor or outdoor garden seating.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

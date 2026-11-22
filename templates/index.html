@@ -28,8 +28,8 @@
                     <i class="fa-solid fa-moon"></i>
                 </div>
                 <div>
-                    <span class="brand-title">Moonflower</span>
-                    <span class="brand-subtitle">Resort &amp; Fine Dining</span>
+                    <span class="brand-title">MoonFlower Garden</span>
+                    <span class="brand-subtitle">Bar, Restaurant &amp; Ice Cream &bull; Camiguin</span>
                 </div>
             </a>
 
@@ -66,8 +66,8 @@
             <div class="hero-content">
                 <div>
                     <div class="hero-eyebrow">
-                        <i class="fa-solid fa-spa"></i>
-                        <span>Welcome to Moonflower Hospitality</span>
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>{{ settings.address }} &bull; Since 2011</span>
                     </div>
                     <h1 class="hero-headline">{{ settings.hero_title }}</h1>
                     <p class="hero-description">{{ settings.hero_subtitle }}</p>
@@ -200,6 +200,13 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label for="foodSeatingArea" class="form-label">Seating Preference</label>
+                        <select id="foodSeatingArea" class="form-select" onchange="updateChairsBadge()">
+                            <option value="Dine-in (Indoor)">Dine-in (Indoor)</option>
+                            <option value="Outdoor Garden Seating">Outdoor Garden Seating</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="foodPax" class="form-label">Number of Guests (Pax)</label>
                         <input type="number" id="foodPax" min="1" max="50" value="5" required class="form-input" oninput="updateChairsBadge()">
                     </div>
@@ -212,20 +219,22 @@
                 </div>
             </div>
 
-            <!-- Step 2: Category Filter & Multi-Select Food Menu Grid -->
-            <div class="section-header">
+            <!-- Step 2: Category Filter, Search & Multi-Select Food Menu Grid -->
+            <div class="section-header" style="align-items: flex-end;">
                 <div>
-                    <h3 class="section-title">2. Select Dishes from the Menu</h3>
-                    <p style="font-size: 0.84rem; color: var(--text-secondary);">Select multiple dishes across categories. All selections go to your cart for a single checkout.</p>
+                    <h3 class="section-title">2. MoonFlower Garden Menu</h3>
+                    <p style="font-size: 0.84rem; color: var(--text-secondary);">Japanese Fusion Rolls, Main Course, Appetizers, Drinks &amp; Desserts. Select multiple dishes for one checkout.</p>
                 </div>
-                <div class="filter-pills" id="menuCategoryPills">
-                    <button type="button" class="filter-pill active" onclick="filterMenuCategory('all', this)">All Menu</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Main Course', this)">Main Course</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Seafood & Grill', this)">Seafood &amp; Grill</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Noodles & Platter', this)">Noodles &amp; Platter</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Rice & Sides', this)">Rice &amp; Sides</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Drinks & Desserts', this)">Drinks &amp; Desserts</button>
-                </div>
+                <input type="search" id="menuSearchInput" placeholder="Search dishes (e.g., Salmon, Tempura, Nasi Goreng)..." class="form-input" style="max-width: 300px; padding: 0.55rem 0.9rem; font-size: 0.84rem;" oninput="renderFoodMenu()">
+            </div>
+
+            <div class="filter-pills" id="menuCategoryPills" style="margin-bottom: 1.25rem;">
+                <button type="button" class="filter-pill active" onclick="filterMenuCategory('all', this)">All Menu</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Japanese Fusion Rolls', this)">Japanese Fusion Rolls</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Appetizers & Snacks', this)">Appetizers &amp; Snacks</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Main Course', this)">Main Course</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Drinks & Beers', this)">Drinks &amp; Beers</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Dessert', this)">Dessert</button>
             </div>
 
             <div id="foodMenuGrid" class="cards-grid-3"></div>
@@ -480,11 +489,14 @@
     <footer class="site-footer">
         <div class="container" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
             <div>
-                <strong style="color: var(--text-primary);">Moonflower Resort &amp; Fine Dining</strong>
-                <span style="margin-left: 0.5rem;">&copy; 2026 All rights reserved.</span>
+                <strong style="color: var(--text-primary);">MoonFlower Garden Camiguin</strong>
+                <span style="margin-left: 0.5rem;">&bull; {{ settings.address }}</span>
+                <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    Specializes in Dine-in, Outdoor Garden Seating, Homemade Ice Cream &amp; Japanese Fusion &bull; {{ settings.contact_email }}
+                </div>
             </div>
             <div>
-                <span>Front Desk: <strong>{{ settings.contact_phone }}</strong></span>
+                <span>Call/Text: <strong>{{ settings.contact_phone }}</strong></span>
                 <span style="margin: 0 0.6rem;">&bull;</span>
                 <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Login</a>
                 <span style="margin: 0 0.6rem;">&bull;</span>
@@ -593,7 +605,8 @@
 
         function updateChairsBadge() {
             const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
-            document.getElementById('chairsPreviewBadge').innerHTML = `<i class="fa-solid fa-chair"></i> Staff Reserves: 1 Table + ${pax} Chair${pax > 1 ? 's' : ''}`;
+            const area = document.getElementById('foodSeatingArea').value;
+            document.getElementById('chairsPreviewBadge').innerHTML = `<i class="fa-solid fa-chair"></i> ${escapeHtml(area)}: 1 Table + ${pax} Chair${pax > 1 ? 's' : ''}`;
             updateFoodCartUI();
         }
 
@@ -793,9 +806,10 @@
             const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
             const dateStr = foodDateEl.value;
             const arrivalTime = document.getElementById('foodArrivalTime').value;
+            const area = document.getElementById('foodSeatingArea').value;
 
             document.getElementById('foodCartSubtitle').innerText = `Date: ${dateStr} | Arrival: ${arrivalTime} | ${pax} Guest(s)`;
-            document.getElementById('foodCartSeatingText').innerText = `1 Table + ${pax} Chair${pax > 1 ? 's' : ''} (Staff Reserved)`;
+            document.getElementById('foodCartSeatingText').innerText = `${area} — 1 Table + ${pax} Chair${pax > 1 ? 's' : ''} (Staff Reserved)`;
 
             container.innerHTML = '';
             let totalPrice = 0;
@@ -869,12 +883,17 @@
             const grid = document.getElementById('foodMenuGrid');
             grid.innerHTML = '';
 
-            const filtered = activeMenuCategory === 'all'
-                ? foodMenuData
-                : foodMenuData.filter(m => m.category === activeMenuCategory);
+            const searchEl = document.getElementById('menuSearchInput');
+            const query = searchEl ? searchEl.value.toLowerCase().trim() : '';
+
+            const filtered = foodMenuData.filter(m => {
+                const catMatch = (activeMenuCategory === 'all' || m.category === activeMenuCategory);
+                const textMatch = !query || m.name.toLowerCase().includes(query) || (m.description || '').toLowerCase().includes(query) || m.category.toLowerCase().includes(query);
+                return catMatch && textMatch;
+            });
 
             if (filtered.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding: 2.5rem; color: var(--text-muted);">No dishes available in this category right now.</div>`;
+                grid.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding: 2.5rem; color: var(--text-muted);">No dishes match your filter.</div>`;
                 return;
             }
 
@@ -976,6 +995,7 @@
             const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
             const dateStr = foodDateEl.value;
             const arrivalTime = document.getElementById('foodArrivalTime').value;
+            const area = document.getElementById('foodSeatingArea').value;
 
             document.getElementById('selectedItemId').value = 'food';
             document.getElementById('selectedBookingType').value = 'food';
@@ -983,7 +1003,7 @@
             document.getElementById('modalTitle').innerText = `Food Booking (${pax} Guests)`;
             document.getElementById('modalSubtitle').innerText = `Date: ${dateStr} | Arrival: ${arrivalTime}`;
             document.getElementById('modalSummaryLabel1').innerText = 'Table & Chairs Setup:';
-            document.getElementById('modalDurationText').innerText = `1 Table + ${pax} Chair${pax > 1 ? 's' : ''} (Staff Reserved)`;
+            document.getElementById('modalDurationText').innerText = `${area} — 1 Table + ${pax} Chair${pax > 1 ? 's' : ''}`;
 
             const breakdownEl = document.getElementById('modalFoodItemsBreakdown');
             breakdownEl.style.display = 'block';
@@ -1111,6 +1131,7 @@
                     phone: phone,
                     date: foodDateEl.value,
                     arrival_time: document.getElementById('foodArrivalTime').value,
+                    seating_area: document.getElementById('foodSeatingArea').value,
                     pax: pax,
                     items: itemsPayload,
                     notes: notes,

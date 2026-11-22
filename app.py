@@ -100,7 +100,8 @@ class FoodBooking(db.Model):
     booking_date = db.Column(db.Date, nullable=False)
     arrival_time = db.Column(db.String(40), nullable=False)
     pax = db.Column(db.Integer, nullable=False, default=2)
-    assigned_table = db.Column(db.String(120), default='')
+    seating_area = db.Column(db.String(60), default='Dine-in (Indoor)')
+    assigned_table = db.Column(db.String(140), default='')
     order_items_json = db.Column(db.Text, default='[]')
     order_summary = db.Column(db.Text, nullable=False)
     total_price = db.Column(db.Float, nullable=False, default=0.0)
@@ -115,13 +116,82 @@ class FoodBooking(db.Model):
 
 
 DEFAULT_SITE_SETTINGS = {
-    'hero_title': 'Moonflower Resort & Fine Dining',
-    'hero_subtitle': 'Experience coastal serenity, comfortable suites, and freshly prepared signature dishes.',
+    'hero_title': 'MoonFlower Garden Camiguin',
+    'hero_subtitle': 'Bar, Restaurant & Homemade Ice Cream Since 2011 — Baylao, Mambajao, Camiguin. Dine-in, Outdoor Garden Seating & Suites.',
     'hero_image': '',
     'dining_image': '',
-    'contact_phone': '0917-123-4567',
-    'gcash_number': '0917-123-4567 (Moonflower Resort)'
+    'contact_phone': '0997-992-2352 / +63 960 572 3635',
+    'gcash_number': '0997-992-2352 (MoonFlower Garden)',
+    'address': 'Baylao, Mambajao, Camiguin 9100, Philippines',
+    'contact_email': 'moonflowergarden2021@gmail.com'
 }
+
+
+REAL_MOONFLOWER_MENU = [
+    # Japanese Fusion Rolls
+    ('Kani (Crab) Fresh Spring Rolls', 'Japanese Fusion Rolls', 220.0, 'Crabstick, Cucumber, Carrots, Mango, Lettuce, Rice Paper, Homemade Sesame Seeds'),
+    ('California Rolls (Sesame/Mango)', 'Japanese Fusion Rolls', 190.0, 'Crabstick, Cucumber, Mango, Lettuce, Sushi Rice, Nori'),
+    ('California Rolls (Fish/Shrimp Roe)', 'Japanese Fusion Rolls', 230.0, 'Crabstick, Cucumber, Mango, Lettuce, Sushi Rice, Nori topped with Fish/Shrimp Roe'),
+    ('Crispy Crab Rolls', 'Japanese Fusion Rolls', 180.0, 'Breaded Crabmeat, Cucumber, Sushi Rice, Nori'),
+    ('Cheesy Ebi Rolls', 'Japanese Fusion Rolls', 220.0, 'Breaded Shrimp, Cheese, Sushi Rice, Nori'),
+    ('San Fran Crunch Rolls', 'Japanese Fusion Rolls', 200.0, 'Breaded Chicken, Cream Cheese, Cucumber, Sushi Rice, Nori'),
+    ('Spicy TekkaMaki Tuna Rolls', 'Japanese Fusion Rolls', 250.0, 'Raw Tuna, Cucumber, Sushi Rice, Nori topped with Raw Tuna'),
+    ('Sake Maki Rolls', 'Japanese Fusion Rolls', 290.0, 'Raw Salmon, Cucumber, Mango, Sushi Rice, Nori topped with Raw Salmon'),
+    ('Nori Maki Rolls', 'Japanese Fusion Rolls', 200.0, 'Crabstick, Cucumber, Carrots, Egg Omelet, Sushi Rice, Nori'),
+    ('Nori Maki Salmon Rolls', 'Japanese Fusion Rolls', 240.0, 'Raw Salmon, Cucumber, Carrots, Egg Omelet, Sushi Rice, Nori'),
+    ('Sesame Omelet w/ Shrimp Rolls', 'Japanese Fusion Rolls', 220.0, 'Breaded Shrimp, Egg Omelet, Mayo, Sushi Rice, Nori'),
+    ('Vegetarian Rolls', 'Japanese Fusion Rolls', 180.0, 'Bell Pepper, Shiitake Mushroom, Lettuce, White Onion, Carrots, Cucumber, Sushi Rice, Nori'),
+    ('Tuna Sashimi', 'Japanese Fusion Rolls', 300.0, 'Sliced Raw Tuna served with Pickled Ginger'),
+    ('Hot Fried Rolls', 'Japanese Fusion Rolls', 250.0, 'Cream Cheese and Salmon, Sushi Rice, Dried Nori'),
+
+    # Appetizers and Snacks
+    ('Shrimp Tempura', 'Appetizers & Snacks', 240.0, 'Crispy golden battered shrimp served with tempura dipping sauce.'),
+    ('Crispy Pata Sliced', 'Appetizers & Snacks', 220.0, 'Crispy sliced pork knuckle served with signature soy-vinegar dip.'),
+    ('Beef Nachos', 'Appetizers & Snacks', 280.0, 'Crisp tortilla chips loaded with seasoned beef, melted cheese, and salsa.'),
+    ('Panini Ham & Cheese', 'Appetizers & Snacks', 130.0, 'Toasted panini sandwich filled with savory ham and melted cheese.'),
+    ('Flavored Fries (Cheese / Sour Cream)', 'Appetizers & Snacks', 130.0, 'Crispy golden french fries tossed in Cheese or Sour Cream flavor.'),
+
+    # Main Course
+    ('Beef Burger w/ French Fries', 'Main Course', 350.0, 'Juicy grilled beef patty burger served with crispy French Fries.'),
+    ('Crispy Chicken Burger', 'Main Course', 320.0, 'Crunchy golden chicken fillet burger with fresh lettuce and dressing.'),
+    ('Beef Bourguignon w/ Mashed Potato', 'Main Course', 450.0, 'Slow-braised tender beef stew in rich red wine sauce served with creamy mashed potato.'),
+    ('Grilled Chicken Mango Salad', 'Main Course', 320.0, 'Char-grilled chicken strips over crisp greens and ripe sweet mango.'),
+    ('Jaegerschnitzel w/ French Fries', 'Main Course', 380.0, 'Crispy breaded pork cutlet topped with savory mushroom hunter sauce and fries.'),
+    ('Nasi Goreng', 'Main Course', 350.0, 'Indonesian-style spiced fried rice topped with sunny-side-up egg and savory sides.'),
+    ('Spaghetti Bolognese', 'Main Course', 320.0, 'Classic al dente spaghetti with slow-simmered rich beef meat sauce.'),
+    ('Pan Seared Salmon w/ Lemon Butter Sauce', 'Main Course', 380.0, 'Pan-seared salmon fillet glazed with fragrant lemon butter sauce.'),
+    ('Lasagna', 'Main Course', 320.0, 'Baked layered pasta with savory meat ragu, bechamel, and melted cheese.'),
+    ('Breaded Calamares', 'Main Course', 290.0, 'Crispy breaded squid rings served with garlic mayo dip.'),
+    ('Buffalo Wings', 'Main Course', 290.0, 'Crispy chicken wings glazed in tangy, spicy buffalo sauce.'),
+    ('Chicken Teriyaki', 'Main Course', 290.0, 'Pan-glazed chicken in sweet savory Japanese teriyaki sauce.'),
+    ('Tuna Kinilaw', 'Main Course', 290.0, 'Fresh Camiguin raw yellowfin tuna cured in vinegar, calamansi, ginger, and spices.'),
+    ('Pancit Guisado Special', 'Main Course', 290.0, 'Filipino stir-fried noodles loaded with meat, shrimp, and crisp vegetables.'),
+    ('Lomi Special', 'Main Course', 290.0, 'Thick egg noodles in rich savory broth topped with generous meats and egg.'),
+    ('Fried Chicken', 'Main Course', 320.0, 'Classic crispy golden fried chicken.'),
+    ('Buttered Chicken', 'Main Course', 350.0, 'Crispy fried chicken glazed in rich garlic butter sauce.'),
+    ('Chicken Cordon Bleu', 'Main Course', 310.0, 'Crispy stuffed chicken breast with ham and melted cheese.'),
+    ('Sinigang Pork / Shrimp', 'Main Course', 320.0, 'Comforting tamarind broth soup with fresh vegetables (Pork or Shrimp).'),
+    ('Chopsuey Special', 'Main Course', 320.0, 'Stir-fried medley of crisp vegetables, meat, and seafood in savory sauce.'),
+
+    # Drinks & Beers
+    ('Mango Shake', 'Drinks & Beers', 135.0, 'Fresh blended ripe mango shake.'),
+    ('Avocado Shake', 'Drinks & Beers', 135.0, 'Creamy fresh blended avocado shake.'),
+    ('Banana Shake', 'Drinks & Beers', 135.0, 'Fresh blended sweet banana shake.'),
+    ('Pineapple Shake', 'Drinks & Beers', 135.0, 'Refreshing blended pineapple shake.'),
+    ('Juice Pitcher (Mango / Iced Tea / Pineapple / Orange / Dalandan)', 'Drinks & Beers', 90.0, 'Chilled pitcher good for sharing (specify flavor in notes).'),
+    ('Juice Can (Four Seasons / Pineapple / Orange / Mango)', 'Drinks & Beers', 65.0, 'Chilled canned fruit juice.'),
+    ('Sparkling Water', 'Drinks & Beers', 65.0, 'Chilled carbonated sparkling water.'),
+    ('Coke Bottle', 'Drinks & Beers', 30.0, 'Ice-cold Coca-Cola bottle.'),
+    ('San Miguel Light (SML)', 'Drinks & Beers', 65.0, 'Chilled San Miguel Light beer.'),
+    ('San Miguel Pale Pilsen (SMB)', 'Drinks & Beers', 60.0, 'Chilled San Miguel Pale Pilsen beer.'),
+    ('Red Horse 500ml (RH500)', 'Drinks & Beers', 80.0, 'Chilled Red Horse 500ml bottle.'),
+    ('Beer Jumbo / Grande', 'Drinks & Beers', 150.0, 'Chilled Grande / Jumbo sharing bottle.'),
+
+    # Dessert
+    ('Apple & Mango Cinnamon Spring Roll', 'Dessert', 180.0, 'Crispy warm dessert spring rolls filled with cinnamon-spiced apple and mango.'),
+    ('Creme Brulee', 'Dessert', 90.0, 'Rich custard base topped with a crisp layer of caramelized sugar.'),
+    ('Mango Float', 'Dessert', 120.0, 'Chilled layered graham, sweet cream, and ripe Camiguin mangoes.'),
+]
 
 
 def get_site_settings():
@@ -166,6 +236,7 @@ def ensure_schema_columns():
         ('room_bookings', 'payment_ref', "VARCHAR(100) DEFAULT ''"),
         ('room_bookings', 'handled_by', "VARCHAR(100) DEFAULT ''"),
         ('room_bookings', 'updated_at_ph', "VARCHAR(40) DEFAULT ''"),
+        ('food_bookings', 'seating_area', "VARCHAR(60) DEFAULT 'Dine-in (Indoor)'"),
     ]
 
     for table_name, col_name, col_def in migrations:
@@ -189,6 +260,20 @@ def seed_data_if_empty():
             if not db.session.get(SiteSetting, k):
                 db.session.add(SiteSetting(key=k, value=v))
 
+        # Upgrade old generic contact/title defaults to real MoonFlower Garden Camiguin info if untouched
+        old_title = db.session.get(SiteSetting, 'hero_title')
+        if old_title and old_title.value == 'Moonflower Resort & Fine Dining':
+            old_title.value = DEFAULT_SITE_SETTINGS['hero_title']
+        old_sub = db.session.get(SiteSetting, 'hero_subtitle')
+        if old_sub and ('coastal serenity' in old_sub.value.lower() or 'masinati' in old_sub.value.lower()):
+            old_sub.value = DEFAULT_SITE_SETTINGS['hero_subtitle']
+        old_phone = db.session.get(SiteSetting, 'contact_phone')
+        if old_phone and old_phone.value == '0917-123-4567':
+            old_phone.value = DEFAULT_SITE_SETTINGS['contact_phone']
+        old_gcash = db.session.get(SiteSetting, 'gcash_number')
+        if old_gcash and old_gcash.value == '0917-123-4567 (Moonflower Resort)':
+            old_gcash.value = DEFAULT_SITE_SETTINGS['gcash_number']
+
         if not Room.query.first():
             rooms = [
                 Room(
@@ -204,7 +289,7 @@ def seed_data_if_empty():
                     room_type='Deluxe Sea View',
                     capacity=2,
                     price_per_night=2500.0,
-                    description='Comfortable suite with a private ocean-view balcony, plush king bed, and complimentary breakfast.',
+                    description='Comfortable suite with a private balcony, plush king bed, and complimentary breakfast.',
                     image_url=''
                 ),
                 Room(
@@ -212,80 +297,32 @@ def seed_data_if_empty():
                     room_type='Moonflower Family Villa',
                     capacity=5,
                     price_per_night=4500.0,
-                    description='Spacious family villa featuring a living lounge, dining area, private veranda, and full resort amenities.',
+                    description='Spacious family villa featuring a living lounge, dining area, private veranda, and full amenities.',
                     image_url=''
                 ),
             ]
             db.session.bulk_save_objects(rooms)
 
-        if not MenuItem.query.first():
-            foods = [
-                MenuItem(
-                    name='Crispy Pata Family Size',
-                    category='Main Course',
-                    price=680.0,
-                    description='Golden deep-fried crispy pork knuckle served with Moonflower signature soy-vinegar dipping sauce.',
-                    image_url='',
-                    is_available=True
-                ),
-                MenuItem(
-                    name='Garlic Buttered Prawns',
-                    category='Seafood & Grill',
-                    price=420.0,
-                    description='Fresh tiger prawns sauteed in roasted garlic butter and sweet chili herb glaze.',
-                    image_url='',
-                    is_available=True
-                ),
-                MenuItem(
-                    name='Grilled Tuna Belly (Sinugba)',
-                    category='Seafood & Grill',
-                    price=390.0,
-                    description='Charcoal-grilled yellowfin tuna belly served with calamansi soy dip and smoked eggplant salad.',
-                    image_url='',
-                    is_available=True
-                ),
-                MenuItem(
-                    name='Pork Sinigang in Tamarind Broth',
-                    category='Main Course',
-                    price=360.0,
-                    description='Rich and savory tamarind pork soup simmered with fresh local vegetables.',
-                    image_url='',
-                    is_available=True
-                ),
-                MenuItem(
-                    name='Moonflower Seafood Pancit Canton',
-                    category='Noodles & Platter',
-                    price=290.0,
-                    description='Wok-tossed egg noodles loaded with shrimp, squid, tender pork strips, and crisp vegetables.',
-                    image_url='',
-                    is_available=True
-                ),
-                MenuItem(
-                    name='Native Chicken Tinola',
-                    category='Main Course',
-                    price=350.0,
-                    description='Aromatic ginger and lemongrass native chicken soup with papaya and chili leaves.',
-                    image_url='',
-                    is_available=True
-                ),
-                MenuItem(
-                    name='Garlic Rice Platter (Good for 4-5)',
-                    category='Rice & Sides',
-                    price=150.0,
-                    description='Generous sharing platter of fragrant steamed rice tossed with crispy toasted garlic.',
-                    image_url='',
-                    is_available=True
-                ),
-                MenuItem(
-                    name='Fresh Mango Shake / Buko Pandan Pitcher',
-                    category='Drinks & Desserts',
-                    price=180.0,
-                    description='Chilled tropical pitcher ideal for families and dining groups.',
-                    image_url='',
-                    is_available=True
-                ),
-            ]
-            db.session.bulk_save_objects(foods)
+        # If menu is empty or still holds old sample placeholder items, seed the authentic 54-item Moonflower Menu
+        existing_menu = MenuItem.query.all()
+        has_legacy_placeholder = any(m.name == 'Garlic Rice Platter (Good for 4-5)' for m in existing_menu)
+        if not existing_menu or has_legacy_placeholder:
+            if has_legacy_placeholder and not FoodBooking.query.first():
+                MenuItem.query.delete()
+                db.session.commit()
+            if not MenuItem.query.first():
+                items_to_add = [
+                    MenuItem(
+                        name=name,
+                        category=cat,
+                        price=price,
+                        description=desc,
+                        image_url='',
+                        is_available=True
+                    )
+                    for name, cat, price, desc in REAL_MOONFLOWER_MENU
+                ]
+                db.session.bulk_save_objects(items_to_add)
 
         db.session.commit()
 
@@ -320,7 +357,7 @@ def home():
 @app.route('/api/catalog', methods=['GET'])
 def get_catalog():
     rooms = Room.query.filter_by(is_active=True).order_by(Room.room_number.asc()).all()
-    foods = MenuItem.query.filter_by(is_available=True).order_by(MenuItem.category.asc(), MenuItem.name.asc()).all()
+    foods = MenuItem.query.filter_by(is_available=True).order_by(MenuItem.category.asc(), MenuItem.id.asc()).all()
     return jsonify({
         'settings': get_site_settings(),
         'rooms': [{
@@ -345,7 +382,7 @@ def get_catalog():
 
 @app.route('/api/menu', methods=['GET'])
 def get_food_menu():
-    foods = MenuItem.query.filter_by(is_available=True).order_by(MenuItem.category.asc(), MenuItem.name.asc()).all()
+    foods = MenuItem.query.filter_by(is_available=True).order_by(MenuItem.id.asc()).all()
     return jsonify([{
         'id': m.id,
         'name': m.name,
@@ -487,13 +524,14 @@ def book_room():
 
 @app.route('/api/food/book', methods=['POST'])
 def book_food():
-    """Creates a Food Order & Dining Reservation where staff reserves a Table + N Chairs based on Pax."""
+    """Creates a Food Order & Dining Reservation where staff reserves a Table + N Chairs based on Pax & Seating Area."""
     payload = request.json or {}
     name = (payload.get('name') or '').strip()
     phone = (payload.get('phone') or '').strip()
     date_str = payload.get('date')
     arrival_time = (payload.get('arrival_time') or '12:30 PM (Lunch)').strip()
     pax = int(payload.get('pax') or 1)
+    seating_area = (payload.get('seating_area') or 'Dine-in (Indoor)').strip()
     items = payload.get('items') or []
     notes = (payload.get('notes') or '').strip()
     payment_method = (payload.get('payment_method') or 'GCash').strip()
@@ -531,7 +569,7 @@ def book_food():
         return jsonify({'error': 'Please select at least one food item from the menu.'}), 400
 
     order_summary_str = ", ".join(summary_parts)
-    seating_instruction = f"1 Table + {pax} Chair{'s' if pax > 1 else ''} (Pending Staff Assignment)"
+    seating_instruction = f"{seating_area} — 1 Table + {pax} Chair{'s' if pax > 1 else ''} (Pending Staff Assignment)"
     ts_ph = now_ph_str()
 
     new_food_booking = FoodBooking(
@@ -540,6 +578,7 @@ def book_food():
         booking_date=b_date,
         arrival_time=arrival_time,
         pax=pax,
+        seating_area=seating_area,
         assigned_table=seating_instruction,
         order_items_json=json.dumps(order_details),
         order_summary=order_summary_str,
@@ -562,7 +601,7 @@ def book_food():
         name,
         'NEW_FOOD_BOOKING',
         ref_code,
-        f"Food Booking ({order_summary_str}) for {pax} Guests (Staff to reserve Table + {pax} Chairs) on {date_str} ({arrival_time}) — Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}"
+        f"Food Booking ({order_summary_str}) for {pax} Guests ({seating_area}: Table + {pax} Chairs) on {date_str} ({arrival_time}) — Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}"
     )
 
     return jsonify({
@@ -574,6 +613,7 @@ def book_food():
         'date': date_str,
         'arrival_time': arrival_time,
         'pax': pax,
+        'seating_area': seating_area,
         'assigned_table': seating_instruction,
         'order_summary': order_summary_str,
         'total_price': total_price,
@@ -664,7 +704,7 @@ def lookup_bookings():
                 'customer_phone': fb.customer_phone,
                 'title': f"Food Order: {fb.order_summary}",
                 'subtitle': f"Date: {fb.booking_date} | Arrival: {fb.arrival_time} | {fb.pax} Guests",
-                'seating_info': fb.assigned_table or f"1 Table + {fb.pax} Chairs",
+                'seating_info': fb.assigned_table or f"{fb.seating_area or 'Dine-in'} — 1 Table + {fb.pax} Chairs",
                 'amount': f"₱{fb.total_price:,.2f}",
                 'payment_status': (fb.payment_status or 'unpaid').upper(),
                 'payment_method': fb.payment_method or 'GCash',
@@ -759,7 +799,8 @@ def build_dashboard_context():
             'booking_date': str(fb.booking_date),
             'arrival_time': fb.arrival_time,
             'pax': fb.pax,
-            'assigned_table': fb.assigned_table or f"1 Table + {fb.pax} Chairs",
+            'seating_area': fb.seating_area or 'Dine-in (Indoor)',
+            'assigned_table': fb.assigned_table or f"{fb.seating_area or 'Dine-in'} — 1 Table + {fb.pax} Chairs",
             'order_summary': fb.order_summary,
             'total_price': f"{price_val:,.2f}",
             'total_price_raw': price_val,
@@ -787,7 +828,7 @@ def build_dashboard_context():
         'is_active': r.is_active
     } for r in all_rooms]
 
-    all_menu = MenuItem.query.order_by(MenuItem.category.asc(), MenuItem.name.asc()).all()
+    all_menu = MenuItem.query.order_by(MenuItem.category.asc(), MenuItem.id.asc()).all()
     menu_list = [{
         'id': m.id,
         'name': m.name,
@@ -1183,7 +1224,7 @@ def save_site_settings():
         return jsonify({'error': 'Unauthorized'}), 401
 
     payload = request.json or {}
-    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number'):
+    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number', 'address', 'contact_email'):
         if key in payload:
             val = (payload.get(key) or '').strip()
             setting = db.session.get(SiteSetting, key)
@@ -1193,7 +1234,7 @@ def save_site_settings():
                 db.session.add(SiteSetting(key=key, value=val))
     db.session.commit()
     actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
-    record_audit(actor_role, session.get('staff_name', actor_role), 'SITE_SETTINGS_UPDATE', '', 'Updated website banner pictures & resort contact settings.')
+    record_audit(actor_role, session.get('staff_name', actor_role), 'SITE_SETTINGS_UPDATE', '', 'Updated website banner pictures & MoonFlower Garden Camiguin settings.')
     return jsonify({'message': 'Site photos & settings updated!'})
 
 
@@ -1218,10 +1259,10 @@ def export_csv(export_type):
             writer.writerow([l.id, l.timestamp_ph, l.actor_role, l.actor_name, l.action_type, l.reference_code, l.details])
         filename = f"moonflower_owner_audit_log_{date.today()}.csv"
     else:
-        writer.writerow(['Ref Code', 'ID', 'Customer Name', 'Phone', 'Booking Date', 'Arrival Time', 'Guests (Chairs)', 'Reserved Table & Chairs', 'Food Order Summary', 'Total Bill (PHP)', 'Payment Status', 'Payment Method', 'Amount Paid (PHP)', 'GCash/Payment Ref', 'Handled By', 'Updated (PH Time)', 'Status', 'Notes'])
+        writer.writerow(['Ref Code', 'ID', 'Customer Name', 'Phone', 'Booking Date', 'Arrival Time', 'Guests (Chairs)', 'Seating Preference', 'Reserved Table & Chairs', 'Food Order Summary', 'Total Bill (PHP)', 'Payment Status', 'Payment Method', 'Amount Paid (PHP)', 'GCash/Payment Ref', 'Handled By', 'Updated (PH Time)', 'Status', 'Notes'])
         records = FoodBooking.query.order_by(FoodBooking.id.desc()).all()
         for fb in records:
-            writer.writerow([f"MF-FD-{fb.id:04d}", fb.id, fb.customer_name, fb.customer_phone, fb.booking_date, fb.arrival_time, fb.pax, fb.assigned_table or '', fb.order_summary, f"{fb.total_price:.2f}", (fb.payment_status or 'unpaid').upper(), fb.payment_method or '', f"{float(fb.amount_paid or 0):.2f}", fb.payment_ref or '', fb.handled_by or '', fb.updated_at_ph or '', fb.status.upper(), fb.notes or ''])
+            writer.writerow([f"MF-FD-{fb.id:04d}", fb.id, fb.customer_name, fb.customer_phone, fb.booking_date, fb.arrival_time, fb.pax, fb.seating_area or '', fb.assigned_table or '', fb.order_summary, f"{fb.total_price:.2f}", (fb.payment_status or 'unpaid').upper(), fb.payment_method or '', f"{float(fb.amount_paid or 0):.2f}", fb.payment_ref or '', fb.handled_by or '', fb.updated_at_ph or '', fb.status.upper(), fb.notes or ''])
         filename = f"moonflower_food_bookings_{date.today()}.csv"
 
     return Response(
