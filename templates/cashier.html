@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moonflower Cashier &amp; Receiver Terminal — Frontdesk Operations</title>
+    <title>Moonflower Cashier &amp; Receiver Terminal — Room &amp; Food Bookings</title>
     <meta name="description" content="Frontdesk Cashier & Booking Receiver Terminal for Moonflower Resort & Fine Dining.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css">
@@ -20,7 +20,7 @@
                 </div>
                 <span class="brand-subtitle">On-Site Frontdesk Staff</span>
                 <h1 class="font-display" style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">Cashier &amp; Receiver</h1>
-                <p style="font-size: 0.84rem; color: var(--text-secondary);">Tig-dawat sa tanang online booking requests ug bayad sa customer</p>
+                <p style="font-size: 0.84rem; color: var(--text-secondary);">Tig-dawat sa Room &amp; Food bookings, GCash payment, ug tig-reserve sa Table + Chairs</p>
             </div>
 
             {% if error %}
@@ -69,7 +69,7 @@
             </div>
 
             <div class="nav-actions">
-                <button type="button" onclick="window.location.reload()" class="btn btn-outline btn-sm" title="Refresh Requests">
+                <button type="button" onclick="window.location.reload()" class="btn btn-outline btn-sm">
                     <i class="fa-solid fa-arrows-rotate"></i>
                     <span>Refresh</span>
                 </button>
@@ -104,7 +104,7 @@
                 <div>
                     <div class="kpi-label">Confirmed Bookings</div>
                     <div class="kpi-value" style="color: var(--status-confirmed-text);">{{ stats.confirmed_count }}</div>
-                    <div class="kpi-sub">{{ stats.room_bookings_total }} Rooms &bull; {{ stats.table_bookings_total }} Tables</div>
+                    <div class="kpi-sub">{{ stats.room_bookings_total }} Rooms &bull; {{ stats.food_bookings_total }} Food Orders</div>
                 </div>
                 <div class="kpi-icon" style="background: var(--status-confirmed-bg); color: var(--status-confirmed-text);">
                     <i class="fa-solid fa-calendar-check"></i>
@@ -134,6 +134,103 @@
             </div>
         </section>
 
+        <!-- FOOD BOOKINGS & TABLE/CHAIRS RESERVATION QUEUE -->
+        <section class="panel-card">
+            <div class="panel-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fa-solid fa-utensils" style="color: var(--brand-accent); font-size: 1.15rem;"></i>
+                    <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Customer Food Orders &amp; Table/Chairs Setup</h2>
+                    <span class="status-badge status-pending">{{ food_bookings|length }} Total</span>
+                </div>
+                <span style="font-size: 0.76rem; color: var(--text-muted);">
+                    <i class="fa-solid fa-chair"></i> I-reserve ang Table ug saktong gidaghanon sa Chairs base sa Pax sa customer
+                </span>
+            </div>
+
+            <div class="panel-toolbar">
+                <div class="filter-pills">
+                    <button type="button" class="filter-pill active" onclick="filterTable('cashierFoodBookings', 'all', this)">All</button>
+                    <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'pending', this)">Pending Requests</button>
+                    <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'confirmed', this)">Confirmed</button>
+                    <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'completed', this)">Completed</button>
+                    <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'cancelled', this)">Cancelled</button>
+                </div>
+                <input type="search" placeholder="Search customer, food, ref code..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('cashierFoodBookings', this.value)">
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="cashierFoodBookings">
+                    <thead>
+                        <tr>
+                            <th>Ref Code</th>
+                            <th>Customer &amp; Schedule</th>
+                            <th>Ordered Food Menu</th>
+                            <th>Pax &rarr; Table &amp; Chairs</th>
+                            <th>Total Bill</th>
+                            <th>GCash / Payment</th>
+                            <th>Status</th>
+                            <th>Cashier Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fb in food_bookings %}
+                        <tr data-status="{{ fb.status }}">
+                            <td>
+                                <strong class="font-mono" style="color: var(--brand-accent);">{{ fb.reference_code }}</strong>
+                                <div style="font-size: 0.72rem; color: var(--text-muted);">{{ fb.updated_at_ph }}</div>
+                            </td>
+                            <td>
+                                <strong>{{ fb.customer_name }}</strong>
+                                <div style="font-size: 0.78rem; color: var(--text-secondary);">{{ fb.customer_phone }}</div>
+                                <div class="font-mono" style="font-size: 0.74rem; color: var(--brand-primary);">{{ fb.booking_date }} | {{ fb.arrival_time }}</div>
+                                {% if fb.notes %}
+                                <div style="font-size: 0.74rem; color: var(--brand-accent); margin-top: 2px;">
+                                    <i class="fa-regular fa-comment-dots"></i> {{ fb.notes }}
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td style="max-width: 240px;">
+                                <strong style="font-size: 0.83rem;">{{ fb.order_summary }}</strong>
+                            </td>
+                            <td>
+                                <span class="status-badge status-pending">
+                                    <i class="fa-solid fa-users"></i> {{ fb.pax }} Kabuok (Pax)
+                                </span>
+                                <div style="font-size: 0.78rem; font-weight: 700; color: var(--brand-primary); margin-top: 4px;">
+                                    <i class="fa-solid fa-chair"></i> {{ fb.assigned_table }}
+                                </div>
+                            </td>
+                            <td><strong style="font-size: 0.95rem;">₱{{ fb.total_price }}</strong></td>
+                            <td>
+                                <span class="status-badge {% if fb.payment_status == 'paid' %}status-confirmed{% elif fb.payment_status == 'partial' %}status-pending{% else %}status-cancelled{% endif %}">
+                                    {{ fb.payment_status.upper() }}
+                                </span>
+                                <div style="font-size: 0.78rem; font-weight: 700; margin-top: 3px;">Paid: ₱{{ fb.amount_paid }}</div>
+                                <div style="font-size: 0.72rem; color: var(--text-muted);">{{ fb.payment_method }} {% if fb.payment_ref %}(Ref: {{ fb.payment_ref }}){% endif %}</div>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ fb.status }}">{{ fb.status.upper() }}</span>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 3px;">By: {{ fb.handled_by }}</div>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-accent btn-sm"
+                                    data-booking='{{ fb | tojson }}'
+                                    onclick="openProcessModal('food', this)">
+                                    <i class="fa-solid fa-chair"></i>
+                                    <span>Assign Table &amp; GCash</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">Walay food booking requests sa pagkakaron.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- ROOM BOOKINGS QUEUE -->
         <section class="panel-card">
             <div class="panel-header">
@@ -142,9 +239,6 @@
                     <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Customer Room Booking Requests</h2>
                     <span class="status-badge status-confirmed">{{ room_bookings|length }} Total</span>
                 </div>
-                <span style="font-size: 0.76rem; color: var(--text-muted);">
-                    <i class="fa-solid fa-shield-halved"></i> Tanan nimong aksyon makita sa Owner Monitor
-                </span>
             </div>
 
             <div class="panel-toolbar">
@@ -166,7 +260,7 @@
                             <th>Customer &amp; Notes</th>
                             <th>Room &amp; Dates</th>
                             <th>Total Bill</th>
-                            <th>Payment Recorded</th>
+                            <th>GCash / Payment</th>
                             <th>Booking Status</th>
                             <th>Cashier Action</th>
                         </tr>
@@ -180,7 +274,7 @@
                             </td>
                             <td>
                                 <strong>{{ b.customer_name }}</strong>
-                                <div style="font-size: 0.78rem; color: var(--text-secondary);"><i class="fa-solid fa-phone" style="font-size:0.7rem;"></i> {{ b.customer_phone }}</div>
+                                <div style="font-size: 0.78rem; color: var(--text-secondary);">{{ b.customer_phone }}</div>
                                 {% if b.notes %}
                                 <div style="font-size: 0.74rem; color: var(--brand-accent); margin-top: 2px;">
                                     <i class="fa-regular fa-comment-dots"></i> {{ b.notes }}
@@ -197,7 +291,7 @@
                                     {{ b.payment_status.upper() }}
                                 </span>
                                 <div style="font-size: 0.78rem; font-weight: 700; margin-top: 3px;">Paid: ₱{{ b.amount_paid }}</div>
-                                <div style="font-size: 0.72rem; color: var(--text-muted);">{{ b.payment_method }} {% if b.payment_ref %}({{ b.payment_ref }}){% endif %}</div>
+                                <div style="font-size: 0.72rem; color: var(--text-muted);">{{ b.payment_method }} {% if b.payment_ref %}(Ref: {{ b.payment_ref }}){% endif %}</div>
                             </td>
                             <td>
                                 <span class="status-badge status-{{ b.status }}">{{ b.status.upper() }}</span>
@@ -222,115 +316,38 @@
             </div>
         </section>
 
-        <!-- RESTAURANT TABLE RESERVATIONS QUEUE -->
-        <section class="panel-card">
-            <div class="panel-header">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <i class="fa-solid fa-utensils" style="color: var(--brand-accent); font-size: 1.15rem;"></i>
-                    <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Customer Table Reservation Requests</h2>
-                    <span class="status-badge status-pending">{{ table_bookings|length }} Total</span>
-                </div>
-            </div>
-
-            <div class="panel-toolbar">
-                <div class="filter-pills">
-                    <button type="button" class="filter-pill active" onclick="filterTable('cashierTableBookings', 'all', this)">All</button>
-                    <button type="button" class="filter-pill" onclick="filterTable('cashierTableBookings', 'pending', this)">Pending Requests</button>
-                    <button type="button" class="filter-pill" onclick="filterTable('cashierTableBookings', 'confirmed', this)">Confirmed</button>
-                    <button type="button" class="filter-pill" onclick="filterTable('cashierTableBookings', 'completed', this)">Completed</button>
-                    <button type="button" class="filter-pill" onclick="filterTable('cashierTableBookings', 'cancelled', this)">Cancelled</button>
-                </div>
-                <input type="search" placeholder="Search customer, table, phone..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('cashierTableBookings', this.value)">
-            </div>
-
-            <div class="table-responsive">
-                <table class="data-table" id="cashierTableBookings">
-                    <thead>
-                        <tr>
-                            <th>Ref Code</th>
-                            <th>Customer &amp; Notes</th>
-                            <th>Table &amp; Schedule</th>
-                            <th>Pax</th>
-                            <th>Payment / Deposit</th>
-                            <th>Status</th>
-                            <th>Cashier Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in table_bookings %}
-                        <tr data-status="{{ t.status }}">
-                            <td>
-                                <strong class="font-mono" style="color: var(--brand-accent);">{{ t.reference_code }}</strong>
-                                <div style="font-size: 0.72rem; color: var(--text-muted);">{{ t.updated_at_ph }}</div>
-                            </td>
-                            <td>
-                                <strong>{{ t.customer_name }}</strong>
-                                <div style="font-size: 0.78rem; color: var(--text-secondary);">{{ t.customer_phone }}</div>
-                                {% if t.notes %}
-                                <div style="font-size: 0.74rem; color: var(--brand-accent); margin-top: 2px;">
-                                    <i class="fa-regular fa-comment-dots"></i> {{ t.notes }}
-                                </div>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <strong>{{ t.table_number }}</strong> ({{ t.location_area }})
-                                <div class="font-mono" style="font-size: 0.76rem; color: var(--text-secondary);">{{ t.booking_date }} | {{ t.time_slot }}</div>
-                            </td>
-                            <td><strong>{{ t.pax }} Pax</strong></td>
-                            <td>
-                                <span class="status-badge {% if t.payment_status == 'paid' %}status-confirmed{% elif t.payment_status == 'partial' %}status-pending{% else %}status-cancelled{% endif %}">
-                                    {{ t.payment_status.upper() }}
-                                </span>
-                                <div style="font-size: 0.78rem; font-weight: 700; margin-top: 3px;">Paid: ₱{{ t.amount_paid }}</div>
-                                <div style="font-size: 0.72rem; color: var(--text-muted);">{{ t.payment_method }} {% if t.payment_ref %}({{ t.payment_ref }}){% endif %}</div>
-                            </td>
-                            <td>
-                                <span class="status-badge status-{{ t.status }}">{{ t.status.upper() }}</span>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 3px;">By: {{ t.handled_by }}</div>
-                            </td>
-                            <td>
-                                <button type="button" class="btn btn-accent btn-sm"
-                                    data-booking='{{ t | tojson }}'
-                                    onclick="openProcessModal('table', this)">
-                                    <i class="fa-solid fa-file-invoice-dollar"></i>
-                                    <span>Receive / Payment</span>
-                                </button>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">Walay table reservation requests sa pagkakaron.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
     </main>
 
-    <!-- PROCESS BOOKING & PAYMENT MODAL -->
+    <!-- PROCESS BOOKING, TABLE/CHAIRS ASSIGNMENT & GCASH PAYMENT MODAL -->
     <div id="processBookingModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
         <div class="modal-card">
             <button type="button" onclick="closeProcessModal()" class="modal-close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <span class="brand-subtitle" style="color: var(--brand-accent);">Cashier Verification &amp; Payment</span>
+            <span class="brand-subtitle" style="color: var(--brand-accent);">Cashier Verification &amp; Table/Chairs Setup</span>
             <h3 id="procModalTitle" class="font-display" style="font-size: 1.7rem; font-weight: 700; margin-bottom: 0.25rem;">Process Booking</h3>
-            <p id="procModalSubtitle" style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 1.15rem;"></p>
+            <p id="procModalSubtitle" style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 1.1rem;"></p>
 
             <form id="processBookingForm" onsubmit="submitProcessBooking(event)" style="display: flex; flex-direction: column; gap: 0.95rem;">
                 <input type="hidden" id="procBookingType">
                 <input type="hidden" id="procItemId">
                 <input type="hidden" id="procTotalBillRaw">
 
+                <!-- Table & Chairs Assignment (Shown for Food Bookings) -->
+                <div class="form-group" id="procAssignedTableGroup" style="padding: 0.85rem; background: var(--brand-accent-light); border-radius: var(--radius-md); border: 1px solid var(--status-pending-border);">
+                    <label for="procAssignedTable" class="form-label" style="color: var(--brand-primary);">
+                        <i class="fa-solid fa-chair"></i> I-assign ang Table ug Gidaghanon sa Bangko (Chairs) *
+                    </label>
+                    <input type="text" id="procAssignedTable" placeholder="e.g. Table 3 (Veranda) — 5 Chairs Reserved" class="form-input" style="background: #fff;">
+                </div>
+
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                     <div class="form-group">
                         <label for="procStatus" class="form-label">Booking Status *</label>
                         <select id="procStatus" class="form-select">
                             <option value="pending">PENDING (Waiting)</option>
-                            <option value="confirmed">CONFIRMED (Approve)</option>
-                            <option value="completed">COMPLETED (Checked-Out)</option>
+                            <option value="confirmed">CONFIRMED (Approve &amp; Reserve)</option>
+                            <option value="completed">COMPLETED (Done / Served)</option>
                             <option value="cancelled">CANCELLED</option>
                         </select>
                     </div>
@@ -348,8 +365,8 @@
                     <div class="form-group">
                         <label for="procPaymentMethod" class="form-label">Payment Method *</label>
                         <select id="procPaymentMethod" class="form-select">
-                            <option value="Cash">Cash (Frontdesk)</option>
                             <option value="GCash">GCash</option>
+                            <option value="Cash">Cash (Frontdesk)</option>
                             <option value="Maya">Maya</option>
                             <option value="Bank Transfer">Bank Transfer</option>
                             <option value="Pay at Resort">Pay at Resort</option>
@@ -371,7 +388,7 @@
 
                 <div class="form-group">
                     <label for="procNotes" class="form-label">Notes / Cashier Remarks</label>
-                    <textarea id="procNotes" rows="2" class="form-textarea" placeholder="Add verification remarks or cancellation reason..."></textarea>
+                    <textarea id="procNotes" rows="2" class="form-textarea" placeholder="Add verification remarks or special instructions..."></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem;">
@@ -418,13 +435,21 @@
             document.getElementById('procItemId').value = b.id;
             document.getElementById('procTotalBillRaw').value = b.total_price_raw || 0;
             document.getElementById('procModalTitle').innerText = `${b.reference_code} — ${b.customer_name}`;
-            document.getElementById('procModalSubtitle').innerText = type === 'room'
-                ? `Room ${b.room_number} (${b.check_in_date} → ${b.check_out_date}) | Total Bill: ₱${b.total_price}`
-                : `Table ${b.table_number} (${b.booking_date} | ${b.time_slot}) | ${b.pax} Pax`;
+
+            const tableGroup = document.getElementById('procAssignedTableGroup');
+            if (type === 'food') {
+                tableGroup.style.display = 'flex';
+                document.getElementById('procAssignedTable').value = b.assigned_table || `Table 1 — ${b.pax} Chairs Reserved`;
+                document.getElementById('procModalSubtitle').innerText = `Order: ${b.order_summary} | ${b.pax} Pax | Total Bill: ₱${b.total_price}`;
+            } else {
+                tableGroup.style.display = 'none';
+                document.getElementById('procAssignedTable').value = '';
+                document.getElementById('procModalSubtitle').innerText = `Room ${b.room_number} (${b.check_in_date} → ${b.check_out_date}) | Total Bill: ₱${b.total_price}`;
+            }
 
             document.getElementById('procStatus').value = b.status || 'pending';
             document.getElementById('procPaymentStatus').value = b.payment_status || 'unpaid';
-            document.getElementById('procPaymentMethod').value = b.payment_method || 'Cash';
+            document.getElementById('procPaymentMethod').value = b.payment_method || 'GCash';
             document.getElementById('procAmountPaid').value = b.amount_paid_raw || 0;
             document.getElementById('procPaymentRef').value = b.payment_ref || '';
             document.getElementById('procNotes').value = b.notes || '';
@@ -455,6 +480,7 @@
                 payment_method: document.getElementById('procPaymentMethod').value,
                 amount_paid: parseFloat(document.getElementById('procAmountPaid').value || 0),
                 payment_ref: document.getElementById('procPaymentRef').value,
+                assigned_table: document.getElementById('procAssignedTable').value,
                 notes: document.getElementById('procNotes').value
             };
 
@@ -465,14 +491,13 @@
             });
             const data = await res.json();
             if (res.ok) {
-                showToast('Na-save na ug na-sync na sa Owner Monitor!');
+                showToast('Na-save na ang Table/Chairs setup ug GCash payment!');
                 setTimeout(() => window.location.reload(), 600);
             } else {
                 showToast(data.error || 'Error saving.', true);
             }
         }
 
-        // Auto-check every 15 seconds for new online requests from customers
         let currentPendingCount = {{ stats.pending_count }};
         setInterval(async () => {
             try {

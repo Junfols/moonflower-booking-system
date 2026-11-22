@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moonflower Resort & Fine Dining — Online Booking & Table Reservations</title>
-    <meta name="description" content="Book luxury resort rooms, family villas, and fine dining restaurant tables online at Moonflower Resort & Fine Dining.">
+    <title>Moonflower Resort &amp; Fine Dining — Room &amp; Food Online Booking</title>
+    <meta name="description" content="Book resort rooms and pre-order from the Moonflower Restaurant Food Menu with online GCash payment and automatic table and chair reservation.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -19,7 +19,7 @@
                 </div>
                 <div>
                     <span class="brand-title">Moonflower</span>
-                    <span class="brand-subtitle">Resort, Rooms &amp; Fine Dining</span>
+                    <span class="brand-subtitle">Resort, Rooms &amp; Food Booking</span>
                 </div>
             </a>
 
@@ -60,8 +60,8 @@
                 </div>
                 <div class="hero-badges">
                     <div class="hero-stat-pill">
-                        <strong><i class="fa-solid fa-bolt"></i> Instant</strong>
-                        Online Reservation
+                        <strong><i class="fa-solid fa-mobile-screen-button"></i> GCash Ready</strong>
+                        {{ settings.gcash_number }}
                     </div>
                     <div class="hero-stat-pill">
                         <strong><i class="fa-solid fa-phone"></i> Frontdesk</strong>
@@ -78,9 +78,9 @@
                     <i class="fa-solid fa-bed"></i>
                     <span>Rooms &amp; Stay</span>
                 </button>
-                <button type="button" id="tabTableBtn" onclick="switchTab('tables')" class="mode-tab-btn">
+                <button type="button" id="tabFoodBtn" onclick="switchTab('food')" class="mode-tab-btn">
                     <i class="fa-solid fa-utensils"></i>
-                    <span>Restaurant Table</span>
+                    <span>Food Menu &amp; Dining Booking</span>
                 </button>
                 <button type="button" id="tabLookupBtn" onclick="switchTab('lookup')" class="mode-tab-btn">
                     <i class="fa-solid fa-receipt"></i>
@@ -136,63 +136,107 @@
             </div>
         </section>
 
-        <!-- TAB 2: RESTAURANT TABLE RESERVATION -->
-        <section id="sectionTables" class="hidden">
+        <!-- TAB 2: FOOD MENU & DINING BOOKING (WITH AUTO TABLE + CHAIRS BY PAX) -->
+        <section id="sectionFood" class="hidden">
             {% if settings.dining_image %}
             <div class="dining-showcase">
                 <img src="{{ settings.dining_image }}" alt="Moonflower Restaurant Dining" class="dining-showcase-img">
                 <div class="dining-showcase-content">
-                    <span class="brand-subtitle" style="color: var(--brand-accent); margin-bottom: 0.4rem;">Al Fresco &amp; Indoor Dining</span>
+                    <span class="brand-subtitle" style="color: var(--brand-accent); margin-bottom: 0.4rem;">Moonflower Culinary &amp; Dining</span>
                     <h2 class="font-display" style="font-size: 2rem; font-weight: 700; line-height: 1.15; margin-bottom: 0.65rem;">
-                        Moonflower Veranda &amp; Restaurant
+                        Pili sa Food Menu &amp; Kami Mag-andam sa Lamesa ug Bangko
                     </h2>
                     <p style="font-size: 0.9rem; color: var(--text-secondary);">
-                        Pilia ang imong gusto nga pwesto — gikan sa bugnaw nga Indoor AC, presko nga Garden Al Fresco, hangtod sa Veranda Sunset view.
+                        Pilia ang inyong mga pagkaon sa menu, ibutang kung pila mo kabuok (pananglitan: 5 kabuok), ug ang staff sa Moonflower na ang mag-reserve og lamesa ug saktong gidaghanon sa bangko para ninyo!
                     </p>
                 </div>
             </div>
             {% endif %}
 
+            <!-- Step 1: Pax (Guest Count -> Chairs), Date & Arrival Time -->
             <div class="search-bar-card">
                 <div class="search-bar-header">
-                    <h2 class="search-bar-title">
-                        <i class="fa-solid fa-chair" style="color: var(--brand-accent);"></i>
-                        <span>Mag-reserve og Lamesa sa Restaurant</span>
-                    </h2>
+                    <div>
+                        <h2 class="search-bar-title">
+                            <i class="fa-solid fa-utensils" style="color: var(--brand-accent);"></i>
+                            <span>1. Ibutang ang Petsa, Oras, ug Pila Mo Kabuok (Pax)</span>
+                        </h2>
+                        <p style="font-size: 0.83rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                            Base sa gidaghanon sa inyong grupo, ang staff sa Moonflower mag-andam og <strong>Table + Chairs</strong> para ninyo.
+                        </p>
+                    </div>
+                    <span id="chairsPreviewBadge" class="status-badge status-pending">
+                        <i class="fa-solid fa-chair"></i> Staff Reserves: 1 Table + 5 Chairs
+                    </span>
                 </div>
-                <form id="tableSearchForm" class="search-grid-tables" onsubmit="searchTables(event)">
+
+                <div class="search-grid-tables">
                     <div class="form-group">
-                        <label for="tableDate" class="form-label">Petsa (Date)</label>
-                        <input type="date" id="tableDate" required class="form-input">
+                        <label for="foodDate" class="form-label">Petsa sa Pagpangaon (Date)</label>
+                        <input type="date" id="foodDate" required class="form-input">
                     </div>
                     <div class="form-group">
-                        <label for="tableTimeSlot" class="form-label">Oras (Time Slot)</label>
-                        <select id="tableTimeSlot" required class="form-select">
-                            <option value="11:00-13:00">11:00 AM - 01:00 PM (Lunch)</option>
-                            <option value="13:00-15:00">01:00 PM - 03:00 PM (Afternoon)</option>
-                            <option value="18:00-20:00">06:00 PM - 08:00 PM (Dinner Slot 1)</option>
-                            <option value="20:00-22:00">08:00 PM - 10:00 PM (Dinner Slot 2)</option>
+                        <label for="foodArrivalTime" class="form-label">Oras sa Pag-abot (Arrival Time)</label>
+                        <select id="foodArrivalTime" class="form-select">
+                            <option value="11:30 AM (Lunch)">11:30 AM — Lunch</option>
+                            <option value="12:30 PM (Lunch)">12:30 PM — Lunch</option>
+                            <option value="02:00 PM (Afternoon)">02:00 PM — Afternoon</option>
+                            <option value="06:00 PM (Dinner)">06:00 PM — Dinner</option>
+                            <option value="07:30 PM (Dinner)">07:30 PM — Dinner</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="tablePax" class="form-label">Gidaghanon (Pax)</label>
-                        <input type="number" id="tablePax" min="1" max="20" value="2" required class="form-input">
+                        <label for="foodPax" class="form-label">Pila mo kabuok? (Number of Guests)</label>
+                        <input type="number" id="foodPax" min="1" max="50" value="5" required class="form-input" oninput="updateChairsBadge()">
                     </div>
                     <div>
-                        <button type="submit" id="searchTablesBtn" class="btn btn-accent" style="width: 100%;">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            <span>Check Tables</span>
+                        <button type="button" onclick="openFoodCheckoutModal()" class="btn btn-accent" style="width: 100%;">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span>Checkout (<span id="topCartCount">0</span> Items &bull; ₱<span id="topCartTotal">0</span>)</span>
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
 
-            <div id="tableResultsContainer">
-                <div class="section-header">
-                    <h3 class="section-title">Available Restaurant Tables</h3>
-                    <span id="tableCountBadge" class="status-badge status-pending">Loading...</span>
+            <!-- Step 2: Category Filter & Food Menu Grid -->
+            <div class="section-header">
+                <div>
+                    <h3 class="section-title">2. Pilia ang Inyong Pagkaon sa Moonflower Menu</h3>
+                    <p style="font-size: 0.84rem; color: var(--text-secondary);">I-click ang <strong>+ Add Food</strong> aron idugang sa inyong Food Booking ug makabayad online via GCash.</p>
                 </div>
-                <div id="tablesGrid" class="cards-grid-4"></div>
+                <div class="filter-pills" id="menuCategoryPills">
+                    <button type="button" class="filter-pill active" onclick="filterMenuCategory('all', this)">All Menu</button>
+                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Main Course', this)">Main Course</button>
+                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Seafood & Grill', this)">Seafood &amp; Grill</button>
+                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Noodles & Platter', this)">Noodles &amp; Platter</button>
+                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Rice & Sides', this)">Rice &amp; Sides</button>
+                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Drinks & Desserts', this)">Drinks &amp; Desserts</button>
+                </div>
+            </div>
+
+            <div id="foodMenuGrid" class="cards-grid-3"></div>
+
+            <!-- Floating / Bottom Food Cart Bar -->
+            <div id="foodCartBar" class="search-bar-card hidden" style="position: sticky; bottom: 1rem; z-index: 30; margin-top: 2rem; background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); box-shadow: var(--shadow-lg);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: hsl(38, 75%, 76%); font-weight: 700;">
+                            <i class="fa-solid fa-utensils"></i> Imong Napili nga Pagkaon &amp; Table Setup
+                        </div>
+                        <div id="cartBarSummaryText" style="font-size: 1rem; font-weight: 600; margin-top: 0.2rem;"></div>
+                        <div id="cartBarChairsText" style="font-size: 0.8rem; color: rgba(255,255,255,0.82); margin-top: 0.15rem;"></div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="text-align: right;">
+                            <span style="font-size: 0.74rem; color: rgba(255,255,255,0.8); display: block;">Total Food Bill</span>
+                            <strong id="cartBarTotalAmount" style="font-size: 1.45rem; color: hsl(38, 85%, 78%);">₱0.00</strong>
+                        </div>
+                        <button type="button" onclick="openFoodCheckoutModal()" class="btn btn-accent">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Proceed &amp; Pay via GCash</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -202,14 +246,14 @@
                 <div class="search-bar-header">
                     <h2 class="search-bar-title">
                         <i class="fa-solid fa-ticket" style="color: var(--brand-primary);"></i>
-                        <span>Susiha ang Status sa Imong Booking</span>
+                        <span>Susiha ang Status sa Imong Room o Food Booking</span>
                     </h2>
                 </div>
                 <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem;">
-                    Isulod ang imong <strong>Reference Code</strong> (pananglitan: <code>MF-RM-0001</code>), <strong>Mobile Number</strong>, o <strong>Tibuok Ngalan</strong> aron makita kung na-confirm na sa Admin ang imong reservation.
+                    Isulod ang imong <strong>Reference Code</strong> (pananglitan: <code>MF-FD-0001</code> o <code>MF-RM-0001</code>), <strong>Mobile Number</strong>, o <strong>Tibuok Ngalan</strong> aron makita kung na-confirm na sa Cashier ug unsa nga Lamesa ug Bangko ang gi-reserve para ninyo.
                 </p>
                 <form id="lookupForm" onsubmit="lookupBookings(event)" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                    <input type="text" id="lookupQuery" required placeholder="e.g. MF-RM-0001, 09171234567, o Juan Dela Cruz" class="form-input" style="flex: 1; min-width: 240px;">
+                    <input type="text" id="lookupQuery" required placeholder="e.g. MF-FD-0001, MF-RM-0001, 09171234567, o Juan Dela Cruz" class="form-input" style="flex: 1; min-width: 240px;">
                     <button type="submit" id="lookupSubmitBtn" class="btn btn-primary">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <span>Pangitaa</span>
@@ -224,17 +268,17 @@
 
     </main>
 
-    <!-- BOOKING FORM MODAL -->
+    <!-- BOOKING & GCASH CHECKOUT MODAL (FOR BOTH ROOMS & FOOD) -->
     <div id="bookingModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
         <div class="modal-card">
             <button type="button" onclick="closeModal()" class="modal-close" aria-label="Close modal">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <span class="brand-subtitle" id="modalEyebrow" style="color: var(--brand-accent); margin-bottom: 0.25rem;">Reservation Request</span>
+            <span class="brand-subtitle" id="modalEyebrow" style="color: var(--brand-accent); margin-bottom: 0.25rem;">Reservation &amp; Online GCash Payment</span>
             <h3 id="modalTitle" class="font-display" style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.2rem;">Kumpirmaha ang Booking</h3>
-            <p id="modalSubtitle" style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 1.25rem;"></p>
+            <p id="modalSubtitle" style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 1.15rem;"></p>
 
-            <form id="modalForm" onsubmit="submitBooking(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+            <form id="modalForm" onsubmit="submitBooking(event)" style="display: flex; flex-direction: column; gap: 0.95rem;">
                 <input type="hidden" id="selectedItemId">
                 <input type="hidden" id="selectedBookingType">
 
@@ -248,41 +292,52 @@
                     <input type="tel" id="custPhone" required placeholder="09171234567" class="form-input">
                 </div>
 
+                <!-- GCash Info Banner -->
+                <div style="padding: 0.85rem 1rem; border-radius: var(--radius-md); background: var(--brand-accent-light); border: 1px solid var(--status-pending-border); font-size: 0.82rem;">
+                    <div style="font-weight: 700; color: var(--brand-primary); margin-bottom: 0.2rem;">
+                        <i class="fa-solid fa-mobile-screen-button"></i> Online Payment via GCash: <span>{{ settings.gcash_number }}</span>
+                    </div>
+                    <div style="color: var(--text-secondary);">
+                        Mahimo kang mobayad daan sa GCash ug isulod ang imong Reference # sa ubos aron ma-verify dayon sa among Cashier.
+                    </div>
+                </div>
+
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                     <div class="form-group">
-                        <label for="custPaymentMethod" class="form-label">Payment Option</label>
+                        <label for="custPaymentMethod" class="form-label">Payment Method *</label>
                         <select id="custPaymentMethod" class="form-select">
-                            <option value="Pay at Resort">Pay at Resort (Cash)</option>
-                            <option value="GCash">GCash ({{ settings.gcash_number }})</option>
-                            <option value="Maya">Maya</option>
+                            <option value="GCash" selected>GCash (Online Payment)</option>
+                            <option value="Maya">Maya (Online Payment)</option>
                             <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Pay at Resort">Pay Cash at Resort</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="custPaymentRef" class="form-label">GCash / Payment Ref # (Optional)</label>
-                        <input type="text" id="custPaymentRef" placeholder="If paid via GCash" class="form-input">
+                        <label for="custPaymentRef" class="form-label">GCash Reference #</label>
+                        <input type="text" id="custPaymentRef" placeholder="e.g. 901238412" class="form-input">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="custNotes" class="form-label">Special Requests / Notes (Optional)</label>
-                    <textarea id="custNotes" rows="2" placeholder="Pananglitan: Late check-in, extra pillow, birthday table setup..." class="form-textarea"></textarea>
+                    <textarea id="custNotes" rows="2" placeholder="Pananglitan: Less spicy, extra rice, birthday table setup, window area..." class="form-textarea"></textarea>
                 </div>
 
-                <div id="modalPriceSummary" class="receipt-box" style="margin: 0.25rem 0;">
+                <div id="modalPriceSummary" class="receipt-box" style="margin: 0.2rem 0;">
                     <div class="receipt-row">
-                        <span style="color: var(--text-secondary);">Duration / Stay:</span>
-                        <strong id="modalDurationText">1 Night</strong>
+                        <span style="color: var(--text-secondary);" id="modalSummaryLabel1">Details / Seating:</span>
+                        <strong id="modalDurationText" style="text-align: right; max-width: 62%;">1 Night</strong>
                     </div>
+                    <div id="modalFoodItemsBreakdown" style="font-size: 0.8rem; color: var(--text-secondary); padding: 0.35rem 0; display: none;"></div>
                     <div class="receipt-row" style="border-bottom: none; padding-top: 0.6rem;">
                         <span style="font-weight: 700;">Total nga Bayrunon:</span>
-                        <span id="modalTotalAmount" style="font-size: 1.2rem; font-weight: 700; color: var(--brand-primary);">₱0.00</span>
+                        <span id="modalTotalAmount" style="font-size: 1.25rem; font-weight: 700; color: var(--brand-primary);">₱0.00</span>
                     </div>
                 </div>
 
                 <button type="submit" id="modalSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 0.9rem;">
                     <i class="fa-solid fa-check-circle"></i>
-                    <span>Ipadayon ug I-save ang Booking</span>
+                    <span>Ipadala ang Booking sa Moonflower Cashier</span>
                 </button>
             </form>
         </div>
@@ -338,7 +393,6 @@
     </footer>
 
     <script>
-        // Initialize dates with minimum today
         const todayDate = new Date();
         const todayStr = todayDate.toISOString().split('T')[0];
         const tmrwDate = new Date(todayDate);
@@ -347,14 +401,19 @@
 
         const roomCheckInEl = document.getElementById('roomCheckIn');
         const roomCheckOutEl = document.getElementById('roomCheckOut');
-        const tableDateEl = document.getElementById('tableDate');
+        const foodDateEl = document.getElementById('foodDate');
 
         roomCheckInEl.min = todayStr;
         roomCheckInEl.value = todayStr;
         roomCheckOutEl.min = tmrwStr;
         roomCheckOutEl.value = tmrwStr;
-        tableDateEl.min = todayStr;
-        tableDateEl.value = todayStr;
+        foodDateEl.min = todayStr;
+        foodDateEl.value = todayStr;
+
+        // Food Menu & Cart State
+        let foodMenuData = [];
+        let foodCart = {}; // { menuItemId: qty }
+        let activeMenuCategory = 'all';
 
         function showToast(message, isError = false) {
             const container = document.getElementById('toastContainer');
@@ -362,9 +421,16 @@
             toast.className = isError ? 'toast error' : 'toast';
             toast.innerHTML = `<i class="fa-solid ${isError ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i><span>${message}</span>`;
             container.appendChild(toast);
-            setTimeout(() => {
-                toast.remove();
-            }, 4000);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         function getNightsCount() {
@@ -386,15 +452,21 @@
             document.getElementById('nightsPreviewBadge').innerText = `${nights} Night${nights > 1 ? 's' : ''} Stay`;
         }
 
+        function updateChairsBadge() {
+            const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
+            document.getElementById('chairsPreviewBadge').innerHTML = `<i class="fa-solid fa-chair"></i> Staff Reserves: 1 Table + ${pax} Chair${pax > 1 ? 's' : ''}`;
+            updateFoodCartUI();
+        }
+
         function switchTab(type) {
             const sections = {
                 rooms: document.getElementById('sectionRooms'),
-                tables: document.getElementById('sectionTables'),
+                food: document.getElementById('sectionFood'),
                 lookup: document.getElementById('sectionLookup')
             };
             const buttons = {
                 rooms: document.getElementById('tabRoomBtn'),
-                tables: document.getElementById('tabTableBtn'),
+                food: document.getElementById('tabFoodBtn'),
                 lookup: document.getElementById('tabLookupBtn')
             };
 
@@ -408,18 +480,9 @@
                 }
             });
 
-            if (type === 'tables') {
-                searchTables();
+            if (type === 'food' && foodMenuData.length === 0) {
+                loadFoodMenu();
             }
-        }
-
-        function escapeHtml(str) {
-            return String(str || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
         }
 
         async function searchRooms(e) {
@@ -505,84 +568,166 @@
             document.getElementById('modalEyebrow').innerText = 'Room & Stay Reservation';
             document.getElementById('modalTitle').innerText = `${number} — ${type}`;
             document.getElementById('modalSubtitle').innerText = `Check-in: ${roomCheckInEl.value}  →  Check-out: ${roomCheckOutEl.value}`;
-            document.getElementById('modalPriceSummary').classList.remove('hidden');
+            document.getElementById('modalSummaryLabel1').innerText = 'Duration / Stay:';
             document.getElementById('modalDurationText').innerText = `${nights} Night(s)`;
+            document.getElementById('modalFoodItemsBreakdown').style.display = 'none';
             document.getElementById('modalTotalAmount').innerText = `₱${Number(total).toLocaleString()}`;
             document.getElementById('modalSubmitBtn').className = 'btn btn-primary';
             document.getElementById('bookingModal').classList.remove('hidden');
         }
 
-        async function searchTables(e) {
-            if (e && e.preventDefault) e.preventDefault();
-            const date = tableDateEl.value;
-            const slot = document.getElementById('tableTimeSlot').value;
-            const pax = document.getElementById('tablePax').value;
-
+        // FOOD MENU & CART LOGIC
+        async function loadFoodMenu() {
             try {
-                const res = await fetch(`/api/tables/available?date=${encodeURIComponent(date)}&time_slot=${encodeURIComponent(slot)}&pax=${encodeURIComponent(pax)}`);
-                const data = await res.json();
-
-                if (!res.ok) {
-                    showToast(data.error || 'Adunay problema sa pagpangita og lamesa.', true);
-                    return;
-                }
-
-                const grid = document.getElementById('tablesGrid');
-                grid.innerHTML = '';
-                document.getElementById('tableCountBadge').innerText = `${data.length} Available`;
-
-                if (data.length === 0) {
-                    grid.innerHTML = `
-                        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle);">
-                            <i class="fa-solid fa-utensils" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 0.75rem;"></i>
-                            <h4 class="font-display" style="font-size: 1.4rem; margin-bottom: 0.3rem;">Walay Bakante nga Lamesa</h4>
-                            <p style="font-size: 0.86rem; color: var(--text-secondary);">Walay available nga lamesa para sa ${pax} pax sa maong time slot. Sulayi ang laing oras.</p>
-                        </div>`;
-                    return;
-                }
-
-                data.forEach(t => {
-                    const hasPhoto = Boolean(t.image_url && t.image_url.trim() !== '');
-                    const photoBlock = hasPhoto
-                        ? `<div style="height: 145px; border-radius: var(--radius-md); overflow: hidden; margin-bottom: 0.9rem; background: var(--bg-subtle);">
-                               <img src="${escapeHtml(t.image_url)}" alt="Table ${escapeHtml(t.table_number)}" style="width:100%; height:100%; object-fit:cover;">
-                           </div>`
-                        : '';
-
-                    const card = document.createElement('article');
-                    card.className = 'table-card';
-                    card.innerHTML = `
-                        <div>
-                            ${photoBlock}
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.65rem;">
-                                <span class="status-badge status-pending">${escapeHtml(t.table_number)}</span>
-                                <span style="font-size:0.78rem; font-weight:600; color:var(--text-secondary);">
-                                    <i class="fa-solid fa-chair" style="margin-right:3px;"></i> ${t.capacity} Seats
-                                </span>
-                            </div>
-                            <h4 class="font-display" style="font-size:1.3rem; font-weight:700; margin-bottom:0.25rem;">${escapeHtml(t.location)}</h4>
-                            <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:1.1rem;">Available for ${escapeHtml(slot)}</p>
-                        </div>
-                        <button type="button" class="btn btn-accent btn-sm" style="width:100%;"
-                            onclick="openTableBookingModal(${t.id}, '${escapeHtml(t.table_number)}', '${escapeHtml(t.location)}')">
-                            <i class="fa-regular fa-calendar-plus"></i>
-                            <span>Reserve Table</span>
-                        </button>
-                    `;
-                    grid.appendChild(card);
-                });
+                const res = await fetch('/api/menu');
+                foodMenuData = await res.json();
+                renderFoodMenu();
             } catch (err) {
-                showToast('Dili ma-konek sa server.', true);
+                showToast('Dili ma-load ang food menu.', true);
             }
         }
 
-        function openTableBookingModal(tableId, tableNum, location) {
-            document.getElementById('selectedItemId').value = tableId;
-            document.getElementById('selectedBookingType').value = 'table';
-            document.getElementById('modalEyebrow').innerText = 'Fine Dining Table Reservation';
-            document.getElementById('modalTitle').innerText = `Table ${tableNum} (${location})`;
-            document.getElementById('modalSubtitle').innerText = `Petsa: ${tableDateEl.value} | Oras: ${document.getElementById('tableTimeSlot').value} | ${document.getElementById('tablePax').value} Pax`;
-            document.getElementById('modalPriceSummary').classList.add('hidden');
+        function filterMenuCategory(category, btnEl) {
+            activeMenuCategory = category;
+            const pills = document.querySelectorAll('#menuCategoryPills .filter-pill');
+            pills.forEach(p => p.classList.remove('active'));
+            btnEl.classList.add('active');
+            renderFoodMenu();
+        }
+
+        function changeFoodQty(itemId, delta) {
+            const current = foodCart[itemId] || 0;
+            const next = Math.max(0, current + delta);
+            if (next === 0) {
+                delete foodCart[itemId];
+            } else {
+                foodCart[itemId] = next;
+            }
+            renderFoodMenu();
+            updateFoodCartUI();
+        }
+
+        function updateFoodCartUI() {
+            let totalCount = 0;
+            let totalPrice = 0;
+            const summaryNames = [];
+
+            foodMenuData.forEach(item => {
+                const qty = foodCart[item.id] || 0;
+                if (qty > 0) {
+                    totalCount += qty;
+                    totalPrice += qty * item.price;
+                    summaryNames.push(`${qty}x ${item.name}`);
+                }
+            });
+
+            document.getElementById('topCartCount').innerText = totalCount;
+            document.getElementById('topCartTotal').innerText = totalPrice.toLocaleString();
+
+            const cartBar = document.getElementById('foodCartBar');
+            const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
+
+            if (totalCount > 0) {
+                cartBar.classList.remove('hidden');
+                document.getElementById('cartBarSummaryText').innerText = summaryNames.join(', ');
+                document.getElementById('cartBarChairsText').innerHTML = `<i class="fa-solid fa-chair"></i> Para sa <strong>${pax} kabuok (Pax)</strong> &rarr; Ang Moonflower Staff mag-reserve og <strong>1 Table + ${pax} Chairs</strong>`;
+                document.getElementById('cartBarTotalAmount').innerText = `₱${totalPrice.toLocaleString()}`;
+            } else {
+                cartBar.classList.add('hidden');
+            }
+        }
+
+        function renderFoodMenu() {
+            const grid = document.getElementById('foodMenuGrid');
+            grid.innerHTML = '';
+
+            const filtered = activeMenuCategory === 'all'
+                ? foodMenuData
+                : foodMenuData.filter(m => m.category === activeMenuCategory);
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding: 2.5rem; color: var(--text-muted);">Walay pagkaon sa maong category sa pagkakaron.</div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const qty = foodCart[item.id] || 0;
+                const hasPhoto = Boolean(item.image_url && item.image_url.trim() !== '');
+                const mediaHtml = hasPhoto
+                    ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" class="room-card-img">`
+                    : `<div style="width:100%; height:100%; background: linear-gradient(135deg, hsl(35, 58%, 35%), hsl(25, 52%, 24%)); display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(255,255,255,0.85); padding:1rem; text-align:center;">
+                            <i class="fa-solid fa-bowl-food" style="font-size:2.1rem; margin-bottom:0.45rem; color:hsl(38, 85%, 78%);"></i>
+                            <span style="font-family:var(--font-display); font-size:1.15rem;">${escapeHtml(item.name)}</span>
+                       </div>`;
+
+                const card = document.createElement('article');
+                card.className = 'room-card';
+                card.innerHTML = `
+                    <div class="room-card-media" style="height: 185px;">
+                        ${mediaHtml}
+                        <span class="room-badge-top" style="background: rgba(180, 110, 35, 0.92);">${escapeHtml(item.category)}</span>
+                    </div>
+                    <div class="room-card-body">
+                        <h4 class="room-card-title">${escapeHtml(item.name)}</h4>
+                        <p class="room-card-desc">${escapeHtml(item.description || 'Freshly prepared by Moonflower Kitchen.')}</p>
+                        <div class="room-card-footer">
+                            <div>
+                                <span class="price-meta">Per Order</span>
+                                <span class="price-amount" style="color: var(--brand-accent);">₱${Number(item.price).toLocaleString()}</span>
+                            </div>
+                            ${qty === 0 ? `
+                                <button type="button" class="btn btn-accent btn-sm" onclick="changeFoodQty(${item.id}, 1)">
+                                    <i class="fa-solid fa-plus"></i>
+                                    <span>Add Food</span>
+                                </button>
+                            ` : `
+                                <div style="display:flex; align-items:center; gap:0.45rem;">
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="changeFoodQty(${item.id}, -1)" style="padding: 0.35rem 0.65rem;">&minus;</button>
+                                    <strong style="min-width: 24px; text-align:center; font-size: 0.95rem;">${qty}</strong>
+                                    <button type="button" class="btn btn-accent btn-sm" onclick="changeFoodQty(${item.id}, 1)" style="padding: 0.35rem 0.65rem;">&plus;</button>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function openFoodCheckoutModal() {
+            const selectedItems = [];
+            let totalPrice = 0;
+
+            foodMenuData.forEach(item => {
+                const qty = foodCart[item.id] || 0;
+                if (qty > 0) {
+                    selectedItems.push(`${qty}x ${item.name} (₱${(qty * item.price).toLocaleString()})`);
+                    totalPrice += qty * item.price;
+                }
+            });
+
+            if (selectedItems.length === 0) {
+                showToast('Palihog pagpili una og pagkaon sa menu sa dili pa mo-checkout.', true);
+                return;
+            }
+
+            const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
+            const dateStr = foodDateEl.value;
+            const arrivalTime = document.getElementById('foodArrivalTime').value;
+
+            document.getElementById('selectedItemId').value = 'food';
+            document.getElementById('selectedBookingType').value = 'food';
+            document.getElementById('modalEyebrow').innerText = 'Food Booking & Auto Table/Chairs Reservation';
+            document.getElementById('modalTitle').innerText = `Food Order (${pax} Kabuok / Pax)`;
+            document.getElementById('modalSubtitle').innerText = `Petsa: ${dateStr} | Oras: ${arrivalTime}`;
+            document.getElementById('modalSummaryLabel1').innerText = 'Table & Chairs Setup:';
+            document.getElementById('modalDurationText').innerText = `1 Table + ${pax} Chairs (Staff Reserved)`;
+
+            const breakdownEl = document.getElementById('modalFoodItemsBreakdown');
+            breakdownEl.style.display = 'block';
+            breakdownEl.innerHTML = `<strong>Ordered Menu:</strong><br>${selectedItems.map(s => '&bull; ' + escapeHtml(s)).join('<br>')}`;
+
+            document.getElementById('modalTotalAmount').innerText = `₱${totalPrice.toLocaleString()}`;
             document.getElementById('modalSubmitBtn').className = 'btn btn-accent';
             document.getElementById('bookingModal').classList.remove('hidden');
         }
@@ -603,20 +748,25 @@
                     <span>${escapeHtml(receipt.customer_phone)}</span>
                 </div>
                 <div class="receipt-row">
-                    <span style="color:var(--text-secondary);">Reservation:</span>
-                    <strong>${escapeHtml(receipt.title)}</strong>
+                    <span style="color:var(--text-secondary);">Order / Room:</span>
+                    <strong style="text-align:right; max-width:65%;">${escapeHtml(receipt.title)}</strong>
                 </div>
                 <div class="receipt-row">
                     <span style="color:var(--text-secondary);">Schedule:</span>
                     <span class="font-mono">${escapeHtml(receipt.schedule)}</span>
                 </div>
+                ${receipt.seating ? `
                 <div class="receipt-row">
-                    <span style="color:var(--text-secondary);">Total / Details:</span>
-                    <strong style="color:var(--brand-primary);">${escapeHtml(receipt.amount)}</strong>
+                    <span style="color:var(--text-secondary);">Table &amp; Chairs:</span>
+                    <strong style="color:var(--brand-accent);">${escapeHtml(receipt.seating)}</strong>
+                </div>` : ''}
+                <div class="receipt-row">
+                    <span style="color:var(--text-secondary);">Total Bill:</span>
+                    <strong style="color:var(--brand-primary); font-size:1.05rem;">${escapeHtml(receipt.amount)}</strong>
                 </div>
                 <div class="receipt-row">
-                    <span style="color:var(--text-secondary);">Payment Option:</span>
-                    <span>${escapeHtml(receipt.payment_method || 'Pay at Resort')} ${receipt.payment_ref ? '(' + escapeHtml(receipt.payment_ref) + ')' : ''}</span>
+                    <span style="color:var(--text-secondary);">Payment Method:</span>
+                    <span>${escapeHtml(receipt.payment_method || 'GCash')} ${receipt.payment_ref ? '(Ref# ' + escapeHtml(receipt.payment_ref) + ')' : ''}</span>
                 </div>
                 ${receipt.notes ? `
                 <div class="receipt-row">
@@ -680,20 +830,26 @@
                     showToast(data.error || 'Napakyas ang pag-book.', true);
                 }
 
-            } else if (type === 'table') {
+            } else if (type === 'food') {
+                const itemsPayload = Object.keys(foodCart).map(id => ({
+                    id: parseInt(id),
+                    qty: foodCart[id]
+                }));
+                const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
+
                 const payload = {
-                    table_id: parseInt(itemId),
                     name: name,
                     phone: phone,
+                    date: foodDateEl.value,
+                    arrival_time: document.getElementById('foodArrivalTime').value,
+                    pax: pax,
+                    items: itemsPayload,
                     notes: notes,
                     payment_method: paymentMethod,
-                    payment_ref: paymentRef,
-                    date: tableDateEl.value,
-                    time_slot: document.getElementById('tableTimeSlot').value,
-                    pax: parseInt(document.getElementById('tablePax').value)
+                    payment_ref: paymentRef
                 };
 
-                const res = await fetch('/api/tables/book', {
+                const res = await fetch('/api/food/book', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
@@ -701,23 +857,26 @@
                 const data = await res.json();
 
                 if (res.ok) {
+                    foodCart = {};
+                    renderFoodMenu();
+                    updateFoodCartUI();
                     closeModal();
-                    showToast('Malampusong na-reserve ang Lamesa! Nadawat na sa Cashier.');
+                    showToast('Malampusong na-save ang Food Booking! Mag-andam na ang Staff og Table ug Chairs.');
                     showReceiptSlip({
-                        reference_code: data.reference_code || `#${data.reservation_id}`,
+                        reference_code: data.reference_code,
                         customer_name: name,
                         customer_phone: phone,
-                        title: `Table ${data.table_number} (${data.location})`,
-                        schedule: `${payload.date} | ${payload.time_slot}`,
-                        amount: `${payload.pax} Pax`,
+                        title: data.order_summary,
+                        schedule: `${data.date} | ${data.arrival_time}`,
+                        seating: `${data.pax} Pax (${data.assigned_table})`,
+                        amount: `₱${Number(data.total_price).toLocaleString()}`,
                         payment_method: paymentMethod,
                         payment_ref: paymentRef,
                         notes: notes,
                         status: 'PENDING'
                     });
-                    searchTables();
                 } else {
-                    showToast(data.error || 'Napakyas ang pag-reserve.', true);
+                    showToast(data.error || 'Napakyas ang pag-save sa Food Booking.', true);
                 }
             }
         }
@@ -754,21 +913,24 @@
                     card.style.marginBottom = '0';
                     card.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem;">
-                            <div>
+                            <div style="max-width: 72%;">
                                 <span class="font-mono" style="font-size:0.78rem; font-weight:700; color:var(--brand-primary);">${escapeHtml(item.reference_code)}</span>
                                 <h4 class="font-display" style="font-size:1.35rem; font-weight:700;">${escapeHtml(item.title)}</h4>
                                 <p style="font-size:0.84rem; color:var(--text-secondary);">
                                     <i class="fa-regular fa-user"></i> ${escapeHtml(item.customer_name)} &bull;
-                                    <i class="fa-regular fa-clock"></i> ${escapeHtml(item.schedule)}
+                                    <i class="fa-regular fa-clock"></i> ${escapeHtml(item.subtitle)}
                                 </p>
-                                <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.35rem;">
-                                    Payment: <strong>${escapeHtml(item.payment_status)}</strong> (Paid: ${escapeHtml(item.amount_paid)} via ${escapeHtml(item.payment_method)})
-                                    &bull; Processed by: <strong>${escapeHtml(item.handled_by)}</strong>
+                                <p style="font-size:0.82rem; color:var(--brand-accent); font-weight:600; margin-top:0.25rem;">
+                                    <i class="fa-solid fa-chair"></i> Reserved Setup: ${escapeHtml(item.seating_info)}
+                                </p>
+                                <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.25rem;">
+                                    Payment: <strong>${escapeHtml(item.payment_status)}</strong> (Verified Paid: ${escapeHtml(item.amount_paid)} via ${escapeHtml(item.payment_method)})
+                                    &bull; Staff: <strong>${escapeHtml(item.handled_by)}</strong>
                                 </p>
                             </div>
                             <div style="text-align:right;">
                                 <span class="status-badge status-${escapeHtml(item.status)}">${escapeHtml(item.status.toUpperCase())}</span>
-                                <div style="font-weight:700; font-size:1.05rem; margin-top:0.4rem;">${escapeHtml(item.amount)}</div>
+                                <div style="font-weight:700; font-size:1.1rem; margin-top:0.4rem; color:var(--brand-primary);">${escapeHtml(item.amount)}</div>
                             </div>
                         </div>
                     `;
@@ -788,10 +950,11 @@
             document.getElementById('receiptModal').classList.add('hidden');
         }
 
-        // Load available rooms immediately on page load
         window.addEventListener('DOMContentLoaded', () => {
             onRoomDatesChange();
+            updateChairsBadge();
             searchRooms();
+            loadFoodMenu();
         });
     </script>
 </body>
