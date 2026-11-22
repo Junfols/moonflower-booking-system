@@ -1,7 +1,7 @@
 import os
 import csv
 import io
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text, or_
@@ -14,7 +14,18 @@ if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
+# Role Passwords (configurable via environment variables or Site Settings)
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'owner123')
+CASHIER_PASSWORD = os.environ.get('CASHIER_PASSWORD', 'cashier123')
+
+PH_TZ = timezone(timedelta(hours=8))
+
+
+def now_ph_str():
+    """Returns current timestamp in Philippine Standard Time (UTC+8)."""
+    return datetime.now(PH_TZ).strftime('%Y-%m-%d %I:%M %p PHT')
+
 
 db = SQLAlchemy(app)
 
@@ -24,6 +35,17 @@ class SiteSetting(db.Model):
     __tablename__ = 'site_settings'
     key = db.Column(db.String(60), primary_key=True)
     value = db.Column(db.Text, nullable=False, default='')
+
+
+class AuditLog(db.Model):
+    __tablename__ = 'audit_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp_ph = db.Column(db.String(40), nullable=False)
+    actor_role = db.Column(db.String(30), nullable=False)
+    actor_name = db.Column(db.String(100), nullable=False)
+    action_type = db.Column(db.String(50), nullable=False)
+    reference_code = db.Column(db.String(40), default='')
+    details = db.Column(db.Text, nullable=False)
 
 
 class Room(db.Model):
@@ -49,6 +71,12 @@ class RoomBooking(db.Model):
     total_price = db.Column(db.Float, nullable=False)
     notes = db.Column(db.Text, default='')
     status = db.Column(db.String(20), default='pending')
+    payment_status = db.Column(db.String(30), default='unpaid')
+    payment_method = db.Column(db.String(40), default='Pay at Resort')
+    amount_paid = db.Column(db.Float, default=0.0)
+    payment_ref = db.Column(db.String(100), default='')
+    handled_by = db.Column(db.String(100), default='')
+    updated_at_ph = db.Column(db.String(40), default='')
 
     room = db.relationship('Room', backref='bookings')
 
@@ -74,6 +102,12 @@ class TableBooking(db.Model):
     pax = db.Column(db.Integer, nullable=False)
     notes = db.Column(db.Text, default='')
     status = db.Column(db.String(20), default='pending')
+    payment_status = db.Column(db.String(30), default='unpaid')
+    payment_method = db.Column(db.String(40), default='Pay at Restaurant')
+    amount_paid = db.Column(db.Float, default=0.0)
+    payment_ref = db.Column(db.String(100), default='')
+    handled_by = db.Column(db.String(100), default='')
+    updated_at_ph = db.Column(db.String(40), default='')
 
     table = db.relationship('RestaurantTable', backref='reservations')
 
@@ -83,7 +117,8 @@ DEFAULT_SITE_SETTINGS = {
     'hero_subtitle': 'Masinati ang kalinaw, komportable nga mga kwarto, ug lamiang pagkaon sa among resort.',
     'hero_image': '',
     'dining_image': '',
-    'contact_phone': '0917-123-4567'
+    'contact_phone': '0917-123-4567',
+    'gcash_number': '0917-123-4567 (Moonflower Resort)'
 }
 
 
@@ -98,6 +133,22 @@ def get_site_settings():
     return settings
 
 
+def record_audit(actor_role, actor_name, action_type, reference_code, details):
+    try:
+        log = AuditLog(
+            timestamp_ph=now_ph_str(),
+            actor_role=actor_role,
+            actor_name=actor_name,
+            action_type=action_type,
+            reference_code=reference_code or '',
+            details=details
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 def ensure_schema_columns():
     """Safely add new columns to existing SQLite/PostgreSQL databases without losing data."""
     inspector = inspect(db.engine)
@@ -107,8 +158,20 @@ def ensure_schema_columns():
         ('rooms', 'description', "TEXT DEFAULT 'Air-conditioned, private bath, hot shower, free Wi-Fi.'"),
         ('rooms', 'image_url', "TEXT DEFAULT ''"),
         ('room_bookings', 'notes', "TEXT DEFAULT ''"),
+        ('room_bookings', 'payment_status', " VARCHAR(30) DEFAULT 'unpaid'"),
+        ('room_bookings', 'payment_method', " VARCHAR(40) DEFAULT 'Pay at Resort'"),
+        ('room_bookings', 'amount_paid', " FLOAT DEFAULT 0.0"),
+        ('room_bookings', 'payment_ref', " VARCHAR(100) DEFAULT ''"),
+        ('room_bookings', 'handled_by', " VARCHAR(100) DEFAULT ''"),
+        ('room_bookings', 'updated_at_ph', " VARCHAR(40) DEFAULT ''"),
         ('restaurant_tables', 'image_url', "TEXT DEFAULT ''"),
         ('table_bookings', 'notes', "TEXT DEFAULT ''"),
+        ('table_bookings', 'payment_status', " VARCHAR(30) DEFAULT 'unpaid'"),
+        ('table_bookings', 'payment_method', " VARCHAR(40) DEFAULT 'Pay at Restaurant'"),
+        ('table_bookings', 'amount_paid', " FLOAT DEFAULT 0.0"),
+        ('table_bookings', 'payment_ref', " VARCHAR(100) DEFAULT ''"),
+        ('table_bookings', 'handled_by', " VARCHAR(100) DEFAULT ''"),
+        ('table_bookings', 'updated_at_ph', " VARCHAR(40) DEFAULT ''"),
     ]
 
     for table_name, col_name, col_def in migrations:
@@ -147,7 +210,7 @@ def seed_data_if_empty():
                     room_type='Deluxe Sea View',
                     capacity=2,
                     price_per_night=2500.0,
-                    description='komportable nga suite nga adunay pribadong balkonahe nga nag-atubang sa dagat, king bed, ug minibar.',
+                    description='Komportable nga suite nga adunay pribadong balkonahe nga nag-atubang sa dagat, king bed, ug minibar.',
                     image_url=''
                 ),
                 Room(
@@ -172,7 +235,9 @@ def seed_data_if_empty():
         db.session.commit()
 
 
-# CUSTOMER ROUTES
+# ==========================================
+# 1. CUSTOMER PORTAL ROUTES
+# ==========================================
 @app.route('/')
 def home():
     settings = get_site_settings()
@@ -181,7 +246,6 @@ def home():
 
 @app.route('/api/catalog', methods=['GET'])
 def get_catalog():
-    """Returns active rooms, tables, and site settings for immediate display."""
     rooms = Room.query.filter_by(is_active=True).order_by(Room.room_number.asc()).all()
     tables = RestaurantTable.query.filter_by(is_active=True).order_by(RestaurantTable.table_number.asc()).all()
     return jsonify({
@@ -255,6 +319,8 @@ def book_room():
     name = (payload.get('name') or '').strip()
     phone = (payload.get('phone') or '').strip()
     notes = (payload.get('notes') or '').strip()
+    payment_method = (payload.get('payment_method') or 'Pay at Resort').strip()
+    payment_ref = (payload.get('payment_ref') or '').strip()
     check_in_str = payload.get('check_in')
     check_out_str = payload.get('check_out')
 
@@ -283,6 +349,7 @@ def book_room():
 
     nights = (check_out - check_in).days
     total_price = nights * room.price_per_night
+    ts_ph = now_ph_str()
 
     new_booking = RoomBooking(
         room_id=room_id,
@@ -292,15 +359,30 @@ def book_room():
         check_out_date=check_out,
         total_price=total_price,
         notes=notes,
-        status='pending'
+        status='pending',
+        payment_status='unpaid',
+        payment_method=payment_method,
+        amount_paid=0.0,
+        payment_ref=payment_ref,
+        handled_by='Online Request',
+        updated_at_ph=ts_ph
     )
     db.session.add(new_booking)
     db.session.commit()
 
+    ref_code = f"MF-RM-{new_booking.id:04d}"
+    record_audit(
+        'CUSTOMER',
+        name,
+        'NEW_ROOM_BOOKING',
+        ref_code,
+        f"Online booking for Room {room.room_number} ({check_in_str} to {check_out_str}), Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}"
+    )
+
     return jsonify({
         'message': 'Room booking saved!',
         'booking_id': new_booking.id,
-        'reference_code': f"MF-RM-{new_booking.id:04d}",
+        'reference_code': ref_code,
         'room_number': room.room_number,
         'room_type': room.room_type,
         'customer_name': name,
@@ -309,6 +391,8 @@ def book_room():
         'check_out': check_out_str,
         'nights': nights,
         'total_price': total_price,
+        'payment_method': payment_method,
+        'payment_ref': payment_ref,
         'notes': notes,
         'status': 'PENDING'
     }), 201
@@ -358,6 +442,8 @@ def book_table():
     slot = payload.get('time_slot')
     pax = int(payload.get('pax') or 1)
     notes = (payload.get('notes') or '').strip()
+    payment_method = (payload.get('payment_method') or 'Pay at Restaurant').strip()
+    payment_ref = (payload.get('payment_ref') or '').strip()
 
     if not table_id or not name or not phone or not date_str or not slot:
         return jsonify({'error': 'Palihog kompletoha ang tanang gikinahanglan nga impormasyon.'}), 400
@@ -378,6 +464,7 @@ def book_table():
     if not table:
         return jsonify({'error': 'Wala makit-i ang lamesa.'}), 404
 
+    ts_ph = now_ph_str()
     new_reservation = TableBooking(
         table_id=table_id,
         customer_name=name,
@@ -386,15 +473,30 @@ def book_table():
         time_slot=slot,
         pax=pax,
         notes=notes,
-        status='pending'
+        status='pending',
+        payment_status='unpaid',
+        payment_method=payment_method,
+        amount_paid=0.0,
+        payment_ref=payment_ref,
+        handled_by='Online Request',
+        updated_at_ph=ts_ph
     )
     db.session.add(new_reservation)
     db.session.commit()
 
+    ref_code = f"MF-TB-{new_reservation.id:04d}"
+    record_audit(
+        'CUSTOMER',
+        name,
+        'NEW_TABLE_RESERVATION',
+        ref_code,
+        f"Online reservation for Table {table.table_number} ({date_str} | {slot}, {pax} Pax)"
+    )
+
     return jsonify({
         'message': 'Table reservation saved!',
         'reservation_id': new_reservation.id,
-        'reference_code': f"MF-TB-{new_reservation.id:04d}",
+        'reference_code': ref_code,
         'table_number': table.table_number,
         'location': table.location_area,
         'customer_name': name,
@@ -402,6 +504,8 @@ def book_table():
         'date': date_str,
         'time_slot': slot,
         'pax': pax,
+        'payment_method': payment_method,
+        'payment_ref': payment_ref,
         'notes': notes,
         'status': 'PENDING'
     }), 201
@@ -409,7 +513,7 @@ def book_table():
 
 @app.route('/api/bookings/lookup', methods=['GET'])
 def lookup_bookings():
-    """Allows customers to check their booking status by Reference ID, Phone Number, or Name."""
+    """Allows customers to check their booking & payment verification status."""
     q = (request.args.get('q') or '').strip()
     if not q:
         return jsonify({'error': 'Palihog isulod ang imong Reference ID, Phone Number, o Ngalan.'}), 400
@@ -423,7 +527,6 @@ def lookup_bookings():
 
     results = []
 
-    # Query Room Bookings
     if not is_table_ref:
         rb_query = db.session.query(RoomBooking, Room).join(Room, RoomBooking.room_id == Room.id)
         if booking_id is not None and not q.startswith('09'):
@@ -452,11 +555,15 @@ def lookup_bookings():
                 'title': f"Room {r.room_number} — {r.room_type}",
                 'schedule': f"{b.check_in_date} → {b.check_out_date}",
                 'amount': f"₱{b.total_price:,.2f}",
+                'payment_status': (b.payment_status or 'unpaid').upper(),
+                'payment_method': b.payment_method or 'Pay at Resort',
+                'amount_paid': f"₱{float(b.amount_paid or 0):,.2f}",
+                'handled_by': b.handled_by or 'Pending Review',
+                'updated_at_ph': b.updated_at_ph or '',
                 'notes': b.notes or '',
                 'status': b.status
             })
 
-    # Query Table Bookings
     if not is_room_ref:
         tb_query = db.session.query(TableBooking, RestaurantTable).join(RestaurantTable, TableBooking.table_id == RestaurantTable.id)
         if booking_id is not None and not q.startswith('09'):
@@ -485,6 +592,11 @@ def lookup_bookings():
                 'title': f"Table {t.table_number} ({t.location_area})",
                 'schedule': f"{tb.booking_date} | {tb.time_slot}",
                 'amount': f"{tb.pax} Pax",
+                'payment_status': (tb.payment_status or 'unpaid').upper(),
+                'payment_method': tb.payment_method or 'Pay at Restaurant',
+                'amount_paid': f"₱{float(tb.amount_paid or 0):,.2f}",
+                'handled_by': tb.handled_by or 'Pending Review',
+                'updated_at_ph': tb.updated_at_ph or '',
                 'notes': tb.notes or '',
                 'status': tb.status
             })
@@ -492,33 +604,36 @@ def lookup_bookings():
     return jsonify({'results': results})
 
 
-# ADMIN ROUTES
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    if request.method == 'POST':
-        pw = request.form.get('password')
-        if pw == ADMIN_PASSWORD:
-            session['is_admin'] = True
-            return redirect(url_for('admin'))
-        return render_template('admin.html', error="Sayop nga Password!", authed=False)
-
-    if not session.get('is_admin'):
-        return render_template('admin.html', authed=False)
-
-    # Safe room bookings data retrieval
+# ==========================================
+# SHARED DATA BUILDER FOR CASHIER, ADMIN & OVERSEAS OWNER
+# ==========================================
+def build_dashboard_context():
     rb_records = db.session.query(RoomBooking, Room).join(Room, RoomBooking.room_id == Room.id).order_by(RoomBooking.id.desc()).all()
     room_bookings = []
     confirmed_revenue = 0.0
     pending_revenue = 0.0
+    total_collected = 0.0
+    cash_collected = 0.0
+    digital_collected = 0.0
     pending_count = 0
     confirmed_count = 0
 
     for b, r in rb_records:
+        price_val = float(b.total_price or 0)
+        paid_val = float(b.amount_paid or 0)
+        total_collected += paid_val
+
+        method_lower = (b.payment_method or '').lower()
+        if 'gcash' in method_lower or 'maya' in method_lower or 'bank' in method_lower:
+            digital_collected += paid_val
+        else:
+            cash_collected += paid_val
+
         if b.status in ('confirmed', 'completed'):
-            confirmed_revenue += float(b.total_price or 0)
+            confirmed_revenue += price_val
             confirmed_count += 1
         elif b.status == 'pending':
-            pending_revenue += float(b.total_price or 0)
+            pending_revenue += price_val
             pending_count += 1
 
         room_bookings.append({
@@ -530,15 +645,30 @@ def admin():
             'room_type': r.room_type,
             'check_in_date': str(b.check_in_date),
             'check_out_date': str(b.check_out_date),
-            'total_price': f"{b.total_price:,.2f}",
+            'total_price': f"{price_val:,.2f}",
+            'total_price_raw': price_val,
+            'payment_status': b.payment_status or 'unpaid',
+            'payment_method': b.payment_method or 'Pay at Resort',
+            'amount_paid': f"{paid_val:,.2f}",
+            'amount_paid_raw': paid_val,
+            'payment_ref': b.payment_ref or '',
+            'handled_by': b.handled_by or '—',
+            'updated_at_ph': b.updated_at_ph or '—',
             'notes': b.notes or '',
             'status': b.status
         })
 
-    # Safe table bookings data retrieval
     tb_records = db.session.query(TableBooking, RestaurantTable).join(RestaurantTable, TableBooking.table_id == RestaurantTable.id).order_by(TableBooking.id.desc()).all()
     table_bookings = []
     for tb, t in tb_records:
+        paid_val = float(tb.amount_paid or 0)
+        total_collected += paid_val
+        method_lower = (tb.payment_method or '').lower()
+        if 'gcash' in method_lower or 'maya' in method_lower or 'bank' in method_lower:
+            digital_collected += paid_val
+        else:
+            cash_collected += paid_val
+
         if tb.status == 'pending':
             pending_count += 1
         elif tb.status in ('confirmed', 'completed'):
@@ -554,11 +684,17 @@ def admin():
             'booking_date': str(tb.booking_date),
             'time_slot': tb.time_slot,
             'pax': tb.pax,
+            'payment_status': tb.payment_status or 'unpaid',
+            'payment_method': tb.payment_method or 'Pay at Restaurant',
+            'amount_paid': f"{paid_val:,.2f}",
+            'amount_paid_raw': paid_val,
+            'payment_ref': tb.payment_ref or '',
+            'handled_by': tb.handled_by or '—',
+            'updated_at_ph': tb.updated_at_ph or '—',
             'notes': tb.notes or '',
             'status': tb.status
         })
 
-    # Rooms inventory list
     all_rooms = Room.query.order_by(Room.room_number.asc()).all()
     rooms_list = [{
         'id': r.id,
@@ -572,7 +708,6 @@ def admin():
         'is_active': r.is_active
     } for r in all_rooms]
 
-    # Tables inventory list
     all_tables = RestaurantTable.query.order_by(RestaurantTable.table_number.asc()).all()
     tables_list = [{
         'id': t.id,
@@ -583,9 +718,26 @@ def admin():
         'is_active': t.is_active
     } for t in all_tables]
 
+    recent_logs = AuditLog.query.order_by(AuditLog.id.desc()).limit(60).all()
+    audit_logs = [{
+        'id': log.id,
+        'timestamp_ph': log.timestamp_ph,
+        'actor_role': log.actor_role,
+        'actor_name': log.actor_name,
+        'action_type': log.action_type,
+        'reference_code': log.reference_code,
+        'details': log.details
+    } for log in recent_logs]
+
+    collectible_balance = max(0.0, confirmed_revenue - total_collected)
+
     stats = {
         'confirmed_revenue': f"{confirmed_revenue:,.2f}",
         'pending_revenue': f"{pending_revenue:,.2f}",
+        'total_collected': f"{total_collected:,.2f}",
+        'cash_collected': f"{cash_collected:,.2f}",
+        'digital_collected': f"{digital_collected:,.2f}",
+        'collectible_balance': f"{collectible_balance:,.2f}",
         'pending_count': pending_count,
         'confirmed_count': confirmed_count,
         'room_bookings_total': len(room_bookings),
@@ -594,41 +746,213 @@ def admin():
         'total_rooms': len(rooms_list),
         'active_tables': sum(1 for t in tables_list if t['is_active']),
         'total_tables': len(tables_list),
+        'ph_time_now': now_ph_str()
     }
 
+    return {
+        'stats': stats,
+        'settings': get_site_settings(),
+        'room_bookings': room_bookings,
+        'table_bookings': table_bookings,
+        'rooms_list': rooms_list,
+        'tables_list': tables_list,
+        'audit_logs': audit_logs
+    }
+
+
+# ==========================================
+# 2. CASHIER / FRONTDESK RECEIVER PORTAL (/cashier)
+# ==========================================
+@app.route('/cashier', methods=['GET', 'POST'])
+def cashier_portal():
+    if request.method == 'POST':
+        staff_name = (request.form.get('staff_name') or 'Frontdesk Cashier').strip()
+        pw = request.form.get('password')
+        if pw in (CASHIER_PASSWORD, ADMIN_PASSWORD, OWNER_PASSWORD):
+            session['is_cashier'] = True
+            session['staff_name'] = staff_name
+            session['staff_role'] = 'CASHIER'
+            record_audit('CASHIER', staff_name, 'STAFF_LOGIN', '', f"Cashier {staff_name} logged into Receiver Terminal.")
+            return redirect(url_for('cashier_portal'))
+        return render_template('cashier.html', error="Sayop nga Cashier Password!", authed=False)
+
+    if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
+        return render_template('cashier.html', authed=False)
+
+    ctx = build_dashboard_context()
+    return render_template(
+        'cashier.html',
+        authed=True,
+        staff_name=session.get('staff_name', 'Frontdesk Receiver'),
+        **ctx
+    )
+
+
+@app.route('/cashier/logout')
+def cashier_logout():
+    staff_name = session.get('staff_name', 'Frontdesk Cashier')
+    record_audit('CASHIER', staff_name, 'STAFF_LOGOUT', '', f"Cashier {staff_name} logged out.")
+    session.pop('is_cashier', None)
+    session.pop('staff_name', None)
+    return redirect(url_for('cashier_portal'))
+
+
+@app.route('/api/bookings/process', methods=['POST'])
+def process_booking_request():
+    """Used by Cashier, Admin, or Owner to confirm/cancel a booking and record payment collection."""
+    if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    payload = request.json or {}
+    booking_type = payload.get('booking_type')
+    item_id = int(payload.get('item_id') or 0)
+    new_status = (payload.get('status') or 'confirmed').strip()
+    payment_status = (payload.get('payment_status') or 'unpaid').strip()
+    payment_method = (payload.get('payment_method') or 'Cash').strip()
+    amount_paid = float(payload.get('amount_paid') or 0.0)
+    payment_ref = (payload.get('payment_ref') or '').strip()
+    notes = (payload.get('notes') or '').strip()
+
+    actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN' if session.get('is_admin') else 'CASHIER'
+    actor_name = session.get('staff_name') or ('Overseas Owner' if session.get('is_owner') else 'Admin')
+
+    model = RoomBooking if booking_type == 'room' else TableBooking if booking_type == 'table' else None
+    if not model:
+        return jsonify({'error': 'Invalid booking type'}), 400
+
+    item = db.session.get(model, item_id)
+    if not item:
+        return jsonify({'error': 'Booking not found'}), 404
+
+    ref_code = f"MF-{'RM' if booking_type == 'room' else 'TB'}-{item.id:04d}"
+    item.status = new_status
+    item.payment_status = payment_status
+    item.payment_method = payment_method
+    item.amount_paid = amount_paid
+    item.payment_ref = payment_ref
+    if notes:
+        item.notes = notes
+    item.handled_by = f"{actor_name} ({actor_role})"
+    item.updated_at_ph = now_ph_str()
+    db.session.commit()
+
+    record_audit(
+        actor_role,
+        actor_name,
+        f"PROCESSED_{new_status.upper()}",
+        ref_code,
+        f"Status: {new_status.upper()} | Payment: {payment_status.upper()} (₱{amount_paid:,.2f} via {payment_method} {('Ref#' + payment_ref) if payment_ref else ''}) for {item.customer_name}"
+    )
+
+    return jsonify({'message': f'Booking {ref_code} updated successfully!', 'reference_code': ref_code})
+
+
+# ==========================================
+# 3. ADMIN & OVERSEAS OWNER MONITOR PORTAL (/admin & /owner)
+# ==========================================
+@app.route('/owner', methods=['GET', 'POST'])
+def owner_portal():
+    if request.method == 'POST':
+        pw = request.form.get('password')
+        if pw == OWNER_PASSWORD or pw == ADMIN_PASSWORD:
+            session['is_admin'] = True
+            session['is_owner'] = True
+            session['staff_name'] = 'Overseas Owner'
+            record_audit('OWNER', 'Overseas Owner', 'OWNER_LOGIN', '', 'Owner logged into Remote Executive Monitor.')
+            return redirect(url_for('admin', view='monitor'))
+        return render_template('admin.html', error="Sayop nga Owner/Admin Password!", authed=False, login_mode='owner')
+
+    if not (session.get('is_owner') or session.get('is_admin')):
+        return render_template('admin.html', authed=False, login_mode='owner')
+
+    return redirect(url_for('admin', view='monitor'))
+
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    if request.method == 'POST':
+        pw = request.form.get('password')
+        role_select = request.form.get('role_select', 'admin')
+        if pw == OWNER_PASSWORD:
+            session['is_admin'] = True
+            session['is_owner'] = True
+            session['staff_name'] = 'Overseas Owner'
+            record_audit('OWNER', 'Overseas Owner', 'OWNER_LOGIN', '', 'Owner logged into Remote Monitor & Admin.')
+            return redirect(url_for('admin', view='monitor'))
+        elif pw == ADMIN_PASSWORD:
+            session['is_admin'] = True
+            session['is_owner'] = (role_select == 'owner')
+            session['staff_name'] = 'Overseas Owner' if role_select == 'owner' else 'System Admin'
+            record_audit('ADMIN', session['staff_name'], 'ADMIN_LOGIN', '', f"{session['staff_name']} logged into Admin Portal.")
+            return redirect(url_for('admin'))
+        return render_template('admin.html', error="Sayop nga Password!", authed=False)
+
+    if not session.get('is_admin'):
+        return render_template('admin.html', authed=False)
+
+    ctx = build_dashboard_context()
+    initial_view = request.args.get('view', 'monitor' if session.get('is_owner') else 'bookings')
     return render_template(
         'admin.html',
         authed=True,
-        stats=stats,
-        settings=get_site_settings(),
-        room_bookings=room_bookings,
-        table_bookings=table_bookings,
-        rooms_list=rooms_list,
-        tables_list=tables_list
+        is_owner=session.get('is_owner', False),
+        staff_name=session.get('staff_name', 'Admin'),
+        initial_view=initial_view,
+        **ctx
     )
 
 
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('is_admin', None)
+    session.pop('is_owner', None)
+    session.pop('staff_name', None)
     return redirect(url_for('admin'))
+
+
+@app.route('/api/monitor/summary')
+def monitor_summary_api():
+    """Live JSON endpoint for Overseas Owner & Cashier auto-refresh monitor."""
+    if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
+        return jsonify({'error': 'Unauthorized'}), 401
+    ctx = build_dashboard_context()
+    return jsonify({
+        'stats': ctx['stats'],
+        'latest_audit': ctx['audit_logs'][:10]
+    })
 
 
 @app.route('/admin/action/<booking_type>/<int:item_id>/<new_status>')
 def update_booking_status(booking_type, item_id, new_status):
-    if not session.get('is_admin'):
+    if not (session.get('is_admin') or session.get('is_cashier') or session.get('is_owner')):
         return redirect(url_for('admin'))
+
+    # Security: Cashier is NEVER allowed to delete records
+    if new_status == 'delete' and not (session.get('is_admin') or session.get('is_owner')):
+        return redirect(url_for('cashier_portal'))
+
+    actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN' if session.get('is_admin') else 'CASHIER'
+    actor_name = session.get('staff_name', actor_role)
 
     model = RoomBooking if booking_type == 'room' else TableBooking if booking_type == 'table' else None
     if model:
         item = db.session.get(model, item_id)
         if item:
+            ref_code = f"MF-{'RM' if booking_type == 'room' else 'TB'}-{item.id:04d}"
             if new_status == 'delete':
+                cust = item.customer_name
                 db.session.delete(item)
+                db.session.commit()
+                record_audit(actor_role, actor_name, 'DELETE_RECORD', ref_code, f"Deleted booking record of {cust}")
             elif new_status in ('pending', 'confirmed', 'cancelled', 'completed'):
                 item.status = new_status
-            db.session.commit()
+                item.handled_by = f"{actor_name} ({actor_role})"
+                item.updated_at_ph = now_ph_str()
+                db.session.commit()
+                record_audit(actor_role, actor_name, f"STATUS_{new_status.upper()}", ref_code, f"Changed status to {new_status.upper()} for {item.customer_name}")
 
+    if request.referrer and '/cashier' in request.referrer:
+        return redirect(url_for('cashier_portal'))
     return redirect(url_for('admin'))
 
 
@@ -649,6 +973,9 @@ def save_room():
     if not room_number or not room_type:
         return jsonify({'error': 'Room number ug Room type gikinahanglan.'}), 400
 
+    actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+    actor_name = session.get('staff_name', actor_role)
+
     if room_id:
         room = db.session.get(Room, int(room_id))
         if not room:
@@ -659,6 +986,7 @@ def save_room():
         room.price_per_night = price
         room.description = description
         room.image_url = image_url
+        action_desc = f"Updated Room {room_number} ({room_type}) — Price: ₱{price:,.2f}/night"
     else:
         existing = Room.query.filter_by(room_number=room_number).first()
         if existing:
@@ -673,8 +1001,10 @@ def save_room():
             is_active=True
         )
         db.session.add(room)
+        action_desc = f"Added new Room {room_number} ({room_type}) — Price: ₱{price:,.2f}/night"
 
     db.session.commit()
+    record_audit(actor_role, actor_name, 'ROOM_INVENTORY_UPDATE', f"RM-{room_number}", action_desc)
     return jsonify({'message': 'Room saved successfully!', 'id': room.id})
 
 
@@ -686,6 +1016,8 @@ def toggle_room(room_id):
     if room:
         room.is_active = not room.is_active
         db.session.commit()
+        actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+        record_audit(actor_role, session.get('staff_name', actor_role), 'ROOM_STATUS_TOGGLE', f"RM-{room.room_number}", f"Room {room.room_number} set to {'AVAILABLE' if room.is_active else 'MAINTENANCE'}")
     return redirect(url_for('admin', _anchor='inventorySection'))
 
 
@@ -704,6 +1036,9 @@ def save_table():
     if not table_number:
         return jsonify({'error': 'Table number gikinahanglan.'}), 400
 
+    actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+    actor_name = session.get('staff_name', actor_role)
+
     if table_id:
         table = db.session.get(RestaurantTable, int(table_id))
         if not table:
@@ -712,6 +1047,7 @@ def save_table():
         table.seating_capacity = seating_capacity
         table.location_area = location_area
         table.image_url = image_url
+        action_desc = f"Updated Table {table_number} ({location_area}, {seating_capacity} Seats)"
     else:
         existing = RestaurantTable.query.filter_by(table_number=table_number).first()
         if existing:
@@ -724,8 +1060,10 @@ def save_table():
             is_active=True
         )
         db.session.add(table)
+        action_desc = f"Added new Table {table_number} ({location_area}, {seating_capacity} Seats)"
 
     db.session.commit()
+    record_audit(actor_role, actor_name, 'TABLE_INVENTORY_UPDATE', table_number, action_desc)
     return jsonify({'message': 'Table saved successfully!', 'id': table.id})
 
 
@@ -737,6 +1075,8 @@ def toggle_table(table_id):
     if table:
         table.is_active = not table.is_active
         db.session.commit()
+        actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+        record_audit(actor_role, session.get('staff_name', actor_role), 'TABLE_STATUS_TOGGLE', table.table_number, f"Table {table.table_number} set to {'AVAILABLE' if table.is_active else 'UNAVAILABLE'}")
     return redirect(url_for('admin', _anchor='inventorySection'))
 
 
@@ -746,7 +1086,7 @@ def save_site_settings():
         return jsonify({'error': 'Unauthorized'}), 401
 
     payload = request.json or {}
-    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone'):
+    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number'):
         if key in payload:
             val = (payload.get(key) or '').strip()
             setting = db.session.get(SiteSetting, key)
@@ -755,28 +1095,36 @@ def save_site_settings():
             else:
                 db.session.add(SiteSetting(key=key, value=val))
     db.session.commit()
+    actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+    record_audit(actor_role, session.get('staff_name', actor_role), 'SITE_SETTINGS_UPDATE', '', 'Updated website banner pictures & resort contact settings.')
     return jsonify({'message': 'Site photos & settings updated!'})
 
 
 @app.route('/admin/export/<export_type>')
 def export_csv(export_type):
-    if not session.get('is_admin'):
+    if not (session.get('is_admin') or session.get('is_owner')):
         return redirect(url_for('admin'))
 
     output = io.StringIO()
     writer = csv.writer(output)
 
     if export_type == 'rooms':
-        writer.writerow(['Ref Code', 'ID', 'Customer Name', 'Phone', 'Room Number', 'Room Type', 'Check-In', 'Check-Out', 'Total Price (PHP)', 'Status', 'Notes'])
+        writer.writerow(['Ref Code', 'ID', 'Customer Name', 'Phone', 'Room Number', 'Room Type', 'Check-In', 'Check-Out', 'Total Price (PHP)', 'Payment Status', 'Payment Method', 'Amount Paid (PHP)', 'Payment Ref', 'Handled By', 'Updated (PH Time)', 'Status', 'Notes'])
         records = db.session.query(RoomBooking, Room).join(Room, RoomBooking.room_id == Room.id).order_by(RoomBooking.id.desc()).all()
         for b, r in records:
-            writer.writerow([f"MF-RM-{b.id:04d}", b.id, b.customer_name, b.customer_phone, r.room_number, r.room_type, b.check_in_date, b.check_out_date, f"{b.total_price:.2f}", b.status.upper(), b.notes or ''])
+            writer.writerow([f"MF-RM-{b.id:04d}", b.id, b.customer_name, b.customer_phone, r.room_number, r.room_type, b.check_in_date, b.check_out_date, f"{b.total_price:.2f}", (b.payment_status or 'unpaid').upper(), b.payment_method or '', f"{float(b.amount_paid or 0):.2f}", b.payment_ref or '', b.handled_by or '', b.updated_at_ph or '', b.status.upper(), b.notes or ''])
         filename = f"moonflower_room_bookings_{date.today()}.csv"
+    elif export_type == 'audit':
+        writer.writerow(['Log ID', 'Philippine Time (UTC+8)', 'Role', 'Staff / Actor Name', 'Action', 'Ref Code', 'Details'])
+        logs = AuditLog.query.order_by(AuditLog.id.desc()).all()
+        for l in logs:
+            writer.writerow([l.id, l.timestamp_ph, l.actor_role, l.actor_name, l.action_type, l.reference_code, l.details])
+        filename = f"moonflower_owner_audit_log_{date.today()}.csv"
     else:
-        writer.writerow(['Ref Code', 'ID', 'Customer Name', 'Phone', 'Table Number', 'Location Area', 'Booking Date', 'Time Slot', 'Pax', 'Status', 'Notes'])
+        writer.writerow(['Ref Code', 'ID', 'Customer Name', 'Phone', 'Table Number', 'Location Area', 'Booking Date', 'Time Slot', 'Pax', 'Payment Status', 'Payment Method', 'Amount Paid (PHP)', 'Payment Ref', 'Handled By', 'Updated (PH Time)', 'Status', 'Notes'])
         records = db.session.query(TableBooking, RestaurantTable).join(RestaurantTable, TableBooking.table_id == RestaurantTable.id).order_by(TableBooking.id.desc()).all()
         for tb, t in records:
-            writer.writerow([f"MF-TB-{tb.id:04d}", tb.id, tb.customer_name, tb.customer_phone, t.table_number, t.location_area, tb.booking_date, tb.time_slot, tb.pax, tb.status.upper(), tb.notes or ''])
+            writer.writerow([f"MF-TB-{tb.id:04d}", tb.id, tb.customer_name, tb.customer_phone, t.table_number, t.location_area, tb.booking_date, tb.time_slot, tb.pax, (tb.payment_status or 'unpaid').upper(), tb.payment_method or '', f"{float(tb.amount_paid or 0):.2f}", tb.payment_ref or '', tb.handled_by or '', tb.updated_at_ph or '', tb.status.upper(), tb.notes or ''])
         filename = f"moonflower_table_reservations_{date.today()}.csv"
 
     return Response(

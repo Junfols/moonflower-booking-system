@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moonflower Admin Portal — Frontdesk &amp; Property Management</title>
-    <meta name="description" content="Moonflower Resort & Fine Dining frontdesk administration portal for managing bookings, rooms, tables, and photos.">
+    <title>Moonflower Owner Monitor &amp; Admin Portal</title>
+    <meta name="description" content="Overseas Owner Remote Monitor and System Administration Dashboard for Moonflower Resort & Fine Dining.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
     {% if not authed %}
-    <!-- ADMIN LOGIN VIEW -->
+    <!-- OWNER & ADMIN LOGIN VIEW -->
     <main style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;">
-        <div class="modal-card" style="max-width: 410px;">
+        <div class="modal-card" style="max-width: 430px;">
             <div style="text-align: center; margin-bottom: 1.5rem;">
                 <div class="brand-emblem" style="margin: 0 auto 0.85rem auto; width: 52px; height: 52px; font-size: 1.35rem;">
-                    <i class="fa-solid fa-lock"></i>
+                    <i class="fa-solid fa-earth-asia"></i>
                 </div>
-                <span class="brand-subtitle">Frontdesk &amp; Property Control</span>
-                <h1 class="font-display" style="font-size: 2rem; font-weight: 700; color: var(--brand-primary);">Moonflower Admin</h1>
-                <p style="font-size: 0.84rem; color: var(--text-secondary);">Pagsulod sa Management Dashboard</p>
+                <span class="brand-subtitle">Overseas Owner &amp; Admin Control</span>
+                <h1 class="font-display" style="font-size: 2rem; font-weight: 700; color: var(--brand-primary);">Moonflower Monitor</h1>
+                <p style="font-size: 0.84rem; color: var(--text-secondary);">Remote Sales Monitor, Staff Audit Log &amp; Property Admin</p>
             </div>
 
             {% if error %}
@@ -29,46 +29,60 @@
             </div>
             {% endif %}
 
-            <form method="POST" style="display: flex; flex-direction: column; gap: 1.1rem;">
+            <form method="POST" action="/admin" style="display: flex; flex-direction: column; gap: 1rem;">
                 <div class="form-group">
-                    <label for="adminPasswordInput" class="form-label">Admin Password</label>
-                    <input type="password" id="adminPasswordInput" name="password" required placeholder="Enter admin password" class="form-input">
+                    <label for="roleSelectInput" class="form-label">Select Access Role</label>
+                    <select id="roleSelectInput" name="role_select" class="form-select">
+                        <option value="owner" {% if login_mode == 'owner' %}selected{% endif %}>🌍 Overseas Owner (Remote Live Monitor &amp; Full Control)</option>
+                        <option value="admin" {% if login_mode != 'owner' %}selected{% endif %}>🛡️ System Admin (Property &amp; Bookings Manager)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="adminPasswordInput" class="form-label">Owner / Admin Password</label>
+                    <input type="password" id="adminPasswordInput" name="password" required placeholder="Owner: owner123 | Admin: admin123" class="form-input">
                 </div>
                 <button type="submit" id="adminLoginBtn" class="btn btn-primary" style="width: 100%; padding: 0.85rem;">
                     <i class="fa-solid fa-right-to-bracket"></i>
-                    <span>Mag-login sa Admin</span>
+                    <span>Sulod sa Owner &amp; Admin Portal</span>
                 </button>
             </form>
 
-            <div style="margin-top: 1.25rem; text-align: center;">
-                <a href="/" style="font-size: 0.82rem; color: var(--brand-primary); text-decoration: none; font-weight: 600;">
-                    &larr; Balik sa Customer Booking Page
-                </a>
+            <div style="margin-top: 1.25rem; text-align: center; display: flex; justify-content: space-between; font-size: 0.8rem;">
+                <a href="/" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">&larr; Customer Page</a>
+                <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Receiver &rarr;</a>
             </div>
         </div>
     </main>
 
     {% else %}
-    <!-- ADMIN AUTHENTICATED DASHBOARD -->
+    <!-- AUTHENTICATED OVERSEAS OWNER & ADMIN DASHBOARD -->
     <header class="site-header">
         <div class="container navbar">
             <div class="brand-logo">
                 <div class="brand-emblem">
-                    <i class="fa-solid fa-moon"></i>
+                    <i class="fa-solid fa-earth-asia"></i>
                 </div>
                 <div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                         <span class="brand-title">Moonflower</span>
-                        <span class="status-badge status-confirmed" style="font-size: 0.65rem;">ADMIN</span>
+                        {% if is_owner %}
+                        <span class="status-badge status-confirmed" style="font-size: 0.65rem;"><i class="fa-solid fa-globe"></i> OVERSEAS OWNER MONITOR</span>
+                        {% else %}
+                        <span class="status-badge status-completed" style="font-size: 0.65rem;">SYSTEM ADMIN</span>
+                        {% endif %}
                     </div>
-                    <span class="brand-subtitle">Frontdesk &amp; Property Management</span>
+                    <span class="brand-subtitle">🇵🇭 PH Time: <strong id="ownerPhTime">{{ stats.ph_time_now }}</strong> &bull; Live Sync Active</span>
                 </div>
             </div>
 
             <div class="nav-actions">
+                <a href="/cashier" class="btn btn-outline btn-sm" title="Open Cashier Terminal">
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span>Cashier View</span>
+                </a>
                 <a href="/" target="_blank" class="btn btn-outline btn-sm">
                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                    <span>View Live Site</span>
+                    <span>Live Site</span>
                 </a>
                 <a href="/admin/logout" class="btn btn-danger btn-sm">
                     <i class="fa-solid fa-power-off"></i>
@@ -80,59 +94,63 @@
 
     <main class="container" style="padding-top: 1.75rem; padding-bottom: 3.5rem; flex: 1;">
 
-        <!-- KPI SUMMARY CARDS -->
+        <!-- EXECUTIVE KPI SUMMARY CARDS -->
         <section class="kpi-grid" aria-label="Key Performance Metrics">
             <div class="kpi-card">
                 <div>
-                    <div class="kpi-label">Confirmed Revenue</div>
+                    <div class="kpi-label">Confirmed Bookings Revenue</div>
                     <div class="kpi-value" style="color: var(--brand-primary);">₱{{ stats.confirmed_revenue }}</div>
                     <div class="kpi-sub">Pending pipeline: ₱{{ stats.pending_revenue }}</div>
                 </div>
                 <div class="kpi-icon" style="background: var(--status-confirmed-bg); color: var(--status-confirmed-text);">
-                    <i class="fa-solid fa-peso-sign"></i>
+                    <i class="fa-solid fa-chart-line"></i>
                 </div>
             </div>
 
             <div class="kpi-card">
                 <div>
-                    <div class="kpi-label">Pending Requests</div>
+                    <div class="kpi-label">Actual Cash Collected</div>
+                    <div class="kpi-value" style="color: var(--status-confirmed-text);">₱{{ stats.cash_collected }}</div>
+                    <div class="kpi-sub">On-hand frontdesk cash (PH)</div>
+                </div>
+                <div class="kpi-icon" style="background: var(--brand-primary-light); color: var(--brand-primary);">
+                    <i class="fa-solid fa-money-bill-trend-up"></i>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div>
+                    <div class="kpi-label">GCash / Digital Collected</div>
+                    <div class="kpi-value" style="color: var(--brand-accent);">₱{{ stats.digital_collected }}</div>
+                    <div class="kpi-sub">Total Collected: ₱{{ stats.total_collected }}</div>
+                </div>
+                <div class="kpi-icon" style="background: var(--brand-accent-light); color: var(--brand-accent);">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div>
+                    <div class="kpi-label">Pending Customer Requests</div>
                     <div class="kpi-value" style="color: var(--status-pending-text);">{{ stats.pending_count }}</div>
-                    <div class="kpi-sub">{{ stats.confirmed_count }} confirmed reservations</div>
+                    <div class="kpi-sub">{{ stats.confirmed_count }} confirmed &bull; Unpaid bal: ₱{{ stats.collectible_balance }}</div>
                 </div>
                 <div class="kpi-icon" style="background: var(--status-pending-bg); color: var(--status-pending-text);">
                     <i class="fa-solid fa-bell"></i>
                 </div>
             </div>
-
-            <div class="kpi-card">
-                <div>
-                    <div class="kpi-label">Room Bookings</div>
-                    <div class="kpi-value">{{ stats.room_bookings_total }}</div>
-                    <div class="kpi-sub">{{ stats.active_rooms }} / {{ stats.total_rooms }} rooms active</div>
-                </div>
-                <div class="kpi-icon" style="background: var(--brand-primary-light); color: var(--brand-primary);">
-                    <i class="fa-solid fa-bed"></i>
-                </div>
-            </div>
-
-            <div class="kpi-card">
-                <div>
-                    <div class="kpi-label">Table Reservations</div>
-                    <div class="kpi-value">{{ stats.table_bookings_total }}</div>
-                    <div class="kpi-sub">{{ stats.active_tables }} / {{ stats.total_tables }} tables active</div>
-                </div>
-                <div class="kpi-icon" style="background: var(--brand-accent-light); color: var(--brand-accent);">
-                    <i class="fa-solid fa-utensils"></i>
-                </div>
-            </div>
         </section>
 
-        <!-- ADMIN MODE TABS -->
+        <!-- ADMIN & OWNER NAVIGATION TABS -->
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-            <nav class="mode-tabs" aria-label="Admin Views">
-                <button type="button" id="adminTabBookingsBtn" onclick="switchAdminTab('bookings')" class="mode-tab-btn active">
+            <nav class="mode-tabs" aria-label="Owner & Admin Views">
+                <button type="button" id="adminTabMonitorBtn" onclick="switchAdminTab('monitor')" class="mode-tab-btn">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                    <span>Overseas Owner Monitor &amp; Audit Log</span>
+                </button>
+                <button type="button" id="adminTabBookingsBtn" onclick="switchAdminTab('bookings')" class="mode-tab-btn">
                     <i class="fa-solid fa-calendar-check"></i>
-                    <span>Bookings &amp; Reservations</span>
+                    <span>Bookings &amp; Payments ({{ stats.room_bookings_total + stats.table_bookings_total }})</span>
                 </button>
                 <button type="button" id="adminTabInventoryBtn" onclick="switchAdminTab('inventory')" class="mode-tab-btn">
                     <i class="fa-solid fa-images"></i>
@@ -145,44 +163,108 @@
             </nav>
         </div>
 
-        <!-- ADMIN VIEW 1: BOOKINGS & RESERVATIONS -->
-        <div id="adminSectionBookings">
+        <!-- TAB 1: OVERSEAS OWNER LIVE MONITOR & STAFF AUDIT LOG -->
+        <div id="adminSectionMonitor" class="hidden">
+            <section class="panel-card">
+                <div class="panel-header">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.6rem;">
+                            <span style="width: 10px; height: 10px; border-radius: 50%; background: hsl(152, 65%, 40%); display: inline-block;"></span>
+                            <h2 class="font-display" style="font-size: 1.55rem; font-weight: 700;">Overseas Owner Real-Time Activity &amp; Cashier Audit Trail</h2>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary);">
+                            Bisan tua ka sa gawas sa Pilipinas, makita nimo diri sa <strong>Philippine Time (UTC+8)</strong> kung kinsa nga Cashier ang nag-confirm, pila ang gibayad sa customer (Cash o GCash), ug tanang lihok sa sistema.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="button" onclick="window.location.reload()" class="btn btn-outline btn-sm">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Sync Now</span>
+                        </button>
+                        <a href="/admin/export/audit" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-file-csv"></i>
+                            <span>Download Audit Log CSV</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Philippine Time (UTC+8)</th>
+                                <th>Role</th>
+                                <th>Staff / Actor Name</th>
+                                <th>Action</th>
+                                <th>Reference</th>
+                                <th>Complete Transaction Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in audit_logs %}
+                            <tr>
+                                <td class="font-mono" style="font-size: 0.78rem; white-space: nowrap;">{{ log.timestamp_ph }}</td>
+                                <td>
+                                    <span class="status-badge {% if log.actor_role == 'OWNER' %}status-confirmed{% elif log.actor_role == 'CASHIER' %}status-pending{% elif log.actor_role == 'ADMIN' %}status-completed{% else %}status-confirmed{% endif %}">
+                                        {{ log.actor_role }}
+                                    </span>
+                                </td>
+                                <td><strong>{{ log.actor_name }}</strong></td>
+                                <td class="font-mono" style="font-size: 0.76rem; font-weight: 700;">{{ log.action_type }}</td>
+                                <td class="font-mono" style="color: var(--brand-primary); font-weight: 700;">{{ log.reference_code or '—' }}</td>
+                                <td style="font-size: 0.83rem; color: var(--text-secondary);">{{ log.details }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                                    Wala pay naka-record nga staff activity log sa pagkakaron.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 2: BOOKINGS & PAYMENTS -->
+        <div id="adminSectionBookings" class="hidden">
 
             <!-- ROOM BOOKINGS PANEL -->
             <section class="panel-card">
                 <div class="panel-header">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <i class="fa-solid fa-bed" style="color: var(--brand-primary); font-size: 1.15rem;"></i>
-                        <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Room Bookings</h2>
+                        <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Room Bookings &amp; Payment Collection</h2>
                         <span class="status-badge status-confirmed">{{ room_bookings|length }} Total</span>
                     </div>
                     <a href="/admin/export/rooms" class="btn btn-outline btn-sm">
                         <i class="fa-solid fa-file-csv"></i>
-                        <span>Export CSV</span>
+                        <span>Export Rooms CSV</span>
                     </a>
                 </div>
 
                 <div class="panel-toolbar">
-                    <div class="filter-pills" id="roomFilterPills">
+                    <div class="filter-pills">
                         <button type="button" class="filter-pill active" onclick="filterTable('roomBookingsTable', 'all', this)">All</button>
                         <button type="button" class="filter-pill" onclick="filterTable('roomBookingsTable', 'pending', this)">Pending</button>
                         <button type="button" class="filter-pill" onclick="filterTable('roomBookingsTable', 'confirmed', this)">Confirmed</button>
                         <button type="button" class="filter-pill" onclick="filterTable('roomBookingsTable', 'completed', this)">Completed</button>
                         <button type="button" class="filter-pill" onclick="filterTable('roomBookingsTable', 'cancelled', this)">Cancelled</button>
                     </div>
-                    <input type="search" id="roomSearchInput" placeholder="Search guest, phone, room, ref..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('roomBookingsTable', this.value)">
+                    <input type="search" placeholder="Search guest, phone, room, ref, cashier..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('roomBookingsTable', this.value)">
                 </div>
 
                 <div class="table-responsive">
                     <table class="data-table" id="roomBookingsTable">
                         <thead>
                             <tr>
-                                <th>Ref / ID</th>
+                                <th>Ref / PH Time</th>
                                 <th>Customer</th>
-                                <th>Room</th>
-                                <th>Check-in &rarr; Out</th>
-                                <th>Total</th>
-                                <th>Status</th>
+                                <th>Room &amp; Dates</th>
+                                <th>Total Bill</th>
+                                <th>Payment &amp; Method</th>
+                                <th>Status &amp; Handled By</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -191,7 +273,7 @@
                             <tr data-status="{{ b.status }}">
                                 <td>
                                     <strong class="font-mono" style="color: var(--brand-primary);">{{ b.reference_code }}</strong>
-                                    <div style="font-size: 0.72rem; color: var(--text-muted);">#{{ b.id }}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">{{ b.updated_at_ph }}</div>
                                 </td>
                                 <td>
                                     <strong>{{ b.customer_name }}</strong>
@@ -203,22 +285,33 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <strong>Room {{ b.room_number }}</strong>
-                                    <div style="font-size: 0.78rem; color: var(--text-secondary);">{{ b.room_type }}</div>
+                                    <strong>Room {{ b.room_number }}</strong> ({{ b.room_type }})
+                                    <div class="font-mono" style="font-size: 0.76rem; color: var(--text-secondary);">{{ b.check_in_date }} &rarr; {{ b.check_out_date }}</div>
                                 </td>
-                                <td class="font-mono" style="font-size: 0.8rem;">{{ b.check_in_date }} &rarr; {{ b.check_out_date }}</td>
                                 <td><strong style="color: var(--brand-primary);">₱{{ b.total_price }}</strong></td>
+                                <td>
+                                    <span class="status-badge {% if b.payment_status == 'paid' %}status-confirmed{% elif b.payment_status == 'partial' %}status-pending{% else %}status-cancelled{% endif %}">
+                                        {{ b.payment_status.upper() }}
+                                    </span>
+                                    <div style="font-size: 0.78rem; font-weight: 700; margin-top: 2px;">Paid: ₱{{ b.amount_paid }}</div>
+                                    <div style="font-size: 0.72rem; color: var(--text-muted);">{{ b.payment_method }} {% if b.payment_ref %}({{ b.payment_ref }}){% endif %}</div>
+                                </td>
                                 <td>
                                     <span class="status-badge status-{{ b.status }}">
                                         {{ b.status.upper() }}
                                     </span>
+                                    <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 3px;">By: <strong>{{ b.handled_by }}</strong></div>
                                 </td>
                                 <td>
                                     <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
-                                        <a href="/admin/action/room/{{ b.id }}/confirmed" class="btn btn-success btn-sm" title="Confirm">Confirm</a>
-                                        <a href="/admin/action/room/{{ b.id }}/completed" class="btn btn-outline btn-sm" title="Mark Completed">Done</a>
-                                        <a href="/admin/action/room/{{ b.id }}/cancelled" class="btn btn-danger btn-sm" title="Cancel">Cancel</a>
-                                        <a href="/admin/action/room/{{ b.id }}/delete" class="btn btn-outline btn-sm" title="Delete Record" onclick="return confirm('Sigurado ka nga papason kini nga booking?')">
+                                        <button type="button" class="btn btn-primary btn-sm"
+                                            data-booking='{{ b | tojson }}'
+                                            onclick="openProcessModal('room', this)">
+                                            <i class="fa-solid fa-peso-sign"></i> Payment / Status
+                                        </button>
+                                        <a href="/admin/action/room/{{ b.id }}/confirmed" class="btn btn-success btn-sm">Confirm</a>
+                                        <a href="/admin/action/room/{{ b.id }}/cancelled" class="btn btn-danger btn-sm">Cancel</a>
+                                        <a href="/admin/action/room/{{ b.id }}/delete" class="btn btn-outline btn-sm" title="Owner/Admin Delete" onclick="return confirm('Sigurado ka nga papason kini nga booking?')">
                                             <i class="fa-regular fa-trash-can"></i>
                                         </a>
                                     </div>
@@ -246,7 +339,7 @@
                     </div>
                     <a href="/admin/export/tables" class="btn btn-outline btn-sm">
                         <i class="fa-solid fa-file-csv"></i>
-                        <span>Export CSV</span>
+                        <span>Export Tables CSV</span>
                     </a>
                 </div>
 
@@ -258,19 +351,19 @@
                         <button type="button" class="filter-pill" onclick="filterTable('tableBookingsTable', 'completed', this)">Completed</button>
                         <button type="button" class="filter-pill" onclick="filterTable('tableBookingsTable', 'cancelled', this)">Cancelled</button>
                     </div>
-                    <input type="search" id="tableSearchInput" placeholder="Search customer, phone, table..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('tableBookingsTable', this.value)">
+                    <input type="search" placeholder="Search customer, phone, table..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('tableBookingsTable', this.value)">
                 </div>
 
                 <div class="table-responsive">
                     <table class="data-table" id="tableBookingsTable">
                         <thead>
                             <tr>
-                                <th>Ref / ID</th>
+                                <th>Ref / PH Time</th>
                                 <th>Customer</th>
                                 <th>Table &amp; Area</th>
                                 <th>Date &amp; Slot</th>
-                                <th>Pax</th>
-                                <th>Status</th>
+                                <th>Payment / Deposit</th>
+                                <th>Status &amp; Handled By</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -279,7 +372,7 @@
                             <tr data-status="{{ t.status }}">
                                 <td>
                                     <strong class="font-mono" style="color: var(--brand-accent);">{{ t.reference_code }}</strong>
-                                    <div style="font-size: 0.72rem; color: var(--text-muted);">#{{ t.id }}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">{{ t.updated_at_ph }}</div>
                                 </td>
                                 <td>
                                     <strong>{{ t.customer_name }}</strong>
@@ -291,20 +384,30 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <strong>{{ t.table_number }}</strong>
-                                    <div style="font-size: 0.78rem; color: var(--text-secondary);">{{ t.location_area }}</div>
+                                    <strong>{{ t.table_number }}</strong> ({{ t.location_area }})
+                                    <div style="font-size: 0.76rem; color: var(--text-secondary);">{{ t.pax }} Pax</div>
                                 </td>
                                 <td class="font-mono" style="font-size: 0.8rem;">{{ t.booking_date }} | {{ t.time_slot }}</td>
-                                <td><strong>{{ t.pax }} Pax</strong></td>
+                                <td>
+                                    <span class="status-badge {% if t.payment_status == 'paid' %}status-confirmed{% elif t.payment_status == 'partial' %}status-pending{% else %}status-cancelled{% endif %}">
+                                        {{ t.payment_status.upper() }}
+                                    </span>
+                                    <div style="font-size: 0.78rem; font-weight: 700; margin-top: 2px;">Paid: ₱{{ t.amount_paid }}</div>
+                                </td>
                                 <td>
                                     <span class="status-badge status-{{ t.status }}">
                                         {{ t.status.upper() }}
                                     </span>
+                                    <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 3px;">By: <strong>{{ t.handled_by }}</strong></div>
                                 </td>
                                 <td>
                                     <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                                        <button type="button" class="btn btn-accent btn-sm"
+                                            data-booking='{{ t | tojson }}'
+                                            onclick="openProcessModal('table', this)">
+                                            <i class="fa-solid fa-peso-sign"></i> Payment / Status
+                                        </button>
                                         <a href="/admin/action/table/{{ t.id }}/confirmed" class="btn btn-success btn-sm">Confirm</a>
-                                        <a href="/admin/action/table/{{ t.id }}/completed" class="btn btn-outline btn-sm">Done</a>
                                         <a href="/admin/action/table/{{ t.id }}/cancelled" class="btn btn-danger btn-sm">Cancel</a>
                                         <a href="/admin/action/table/{{ t.id }}/delete" class="btn btn-outline btn-sm" onclick="return confirm('Sigurado ka nga papason kini nga reservation?')">
                                             <i class="fa-regular fa-trash-can"></i>
@@ -325,7 +428,7 @@
             </section>
         </div>
 
-        <!-- ADMIN VIEW 2: ROOMS, TABLES & CHANGEABLE PICTURES -->
+        <!-- TAB 3: ROOMS, TABLES & CHANGEABLE PICTURES -->
         <div id="adminSectionInventory" class="hidden">
 
             <!-- MANAGE ROOMS & ROOM PHOTOS -->
@@ -333,7 +436,7 @@
                 <div class="panel-header">
                     <div>
                         <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Rooms &amp; Suites (Changeable Pictures &amp; Pricing)</h2>
-                        <p style="font-size: 0.82rem; color: var(--text-secondary);">Mahimo nimong ilisan ang picture sa matag kwarto pinaagi sa pag-upload gikan sa imong phone/PC o pag-paste og image link.</p>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary);">Owner ug Admin lang ang makausab sa presyo ug picture sa matag kwarto.</p>
                     </div>
                     <button type="button" class="btn btn-primary btn-sm" onclick="openRoomEditorModal()">
                         <i class="fa-solid fa-plus"></i>
@@ -468,12 +571,12 @@
             </section>
         </div>
 
-        <!-- ADMIN VIEW 3: WEBSITE BANNER PHOTOS & SITE SETTINGS -->
+        <!-- TAB 4: WEBSITE BANNER PHOTOS & SITE SETTINGS -->
         <div id="adminSectionSettings" class="hidden">
             <section class="panel-card" style="max-width: 780px;">
                 <div class="panel-header">
                     <div>
-                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Website Banner Photos &amp; Resort Details</h2>
+                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Website Banner Photos, GCash &amp; Resort Details</h2>
                         <p style="font-size: 0.82rem; color: var(--text-secondary);">Walay built-in nga picture — ikaw ang makapili, maka-upload, o maka-ilis sa Hero Banner ug Restaurant Banner bisan kanus-a.</p>
                     </div>
                 </div>
@@ -488,9 +591,15 @@
                         <input type="text" id="setHeroSubtitle" value="{{ settings.hero_subtitle }}" required class="form-input">
                     </div>
 
-                    <div class="form-group">
-                        <label for="setContactPhone" class="form-label">Frontdesk Contact Number</label>
-                        <input type="text" id="setContactPhone" value="{{ settings.contact_phone }}" required class="form-input">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="setContactPhone" class="form-label">Frontdesk Contact Number</label>
+                            <input type="text" id="setContactPhone" value="{{ settings.contact_phone }}" required class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="setGcashNumber" class="form-label">Official GCash / Payment Account</label>
+                            <input type="text" id="setGcashNumber" value="{{ settings.gcash_number }}" class="form-input">
+                        </div>
                     </div>
 
                     <!-- HERO BANNER PHOTO UPLOADER -->
@@ -534,6 +643,79 @@
         </div>
 
     </main>
+
+    <!-- PROCESS BOOKING & PAYMENT MODAL (ALSO AVAILABLE IN ADMIN/OWNER) -->
+    <div id="processBookingModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <button type="button" onclick="closeProcessModal()" class="modal-close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <span class="brand-subtitle" style="color: var(--brand-accent);">Payment &amp; Status Verification</span>
+            <h3 id="procModalTitle" class="font-display" style="font-size: 1.7rem; font-weight: 700; margin-bottom: 0.25rem;">Process Booking</h3>
+            <p id="procModalSubtitle" style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 1.15rem;"></p>
+
+            <form id="processBookingForm" onsubmit="submitProcessBooking(event)" style="display: flex; flex-direction: column; gap: 0.95rem;">
+                <input type="hidden" id="procBookingType">
+                <input type="hidden" id="procItemId">
+                <input type="hidden" id="procTotalBillRaw">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <div class="form-group">
+                        <label for="procStatus" class="form-label">Booking Status *</label>
+                        <select id="procStatus" class="form-select">
+                            <option value="pending">PENDING</option>
+                            <option value="confirmed">CONFIRMED</option>
+                            <option value="completed">COMPLETED</option>
+                            <option value="cancelled">CANCELLED</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="procPaymentStatus" class="form-label">Payment Status *</label>
+                        <select id="procPaymentStatus" class="form-select">
+                            <option value="unpaid">UNPAID</option>
+                            <option value="partial">PARTIAL / DOWNPAYMENT</option>
+                            <option value="paid">FULLY PAID</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <div class="form-group">
+                        <label for="procPaymentMethod" class="form-label">Payment Method *</label>
+                        <select id="procPaymentMethod" class="form-select">
+                            <option value="Cash">Cash (Frontdesk)</option>
+                            <option value="GCash">GCash</option>
+                            <option value="Maya">Maya</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Pay at Resort">Pay at Resort</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="procAmountPaid" class="form-label">Amount Paid (₱) *</label>
+                        <div style="display: flex; gap: 0.35rem;">
+                            <input type="number" id="procAmountPaid" min="0" step="0.01" value="0" required class="form-input">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="fillFullBillAmount()">Full</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="procPaymentRef" class="form-label">GCash Ref # / Official Receipt #</label>
+                    <input type="text" id="procPaymentRef" placeholder="e.g. GCash Ref 901238412" class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="procNotes" class="form-label">Notes / Remarks</label>
+                    <textarea id="procNotes" rows="2" class="form-textarea"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem;">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Booking &amp; Payment</span>
+                </button>
+            </form>
+        </div>
+    </div>
 
     <!-- ROOM EDITOR & PHOTO UPLOAD MODAL -->
     <div id="roomEditorModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
@@ -646,11 +828,13 @@
 
         function switchAdminTab(tab) {
             const sections = {
+                monitor: document.getElementById('adminSectionMonitor'),
                 bookings: document.getElementById('adminSectionBookings'),
                 inventory: document.getElementById('adminSectionInventory'),
                 settings: document.getElementById('adminSectionSettings')
             };
             const btns = {
+                monitor: document.getElementById('adminTabMonitorBtn'),
                 bookings: document.getElementById('adminTabBookingsBtn'),
                 inventory: document.getElementById('adminTabInventoryBtn'),
                 settings: document.getElementById('adminTabSettingsBtn')
@@ -666,8 +850,12 @@
             });
         }
 
+        // Open initial tab based on role or URL hash
+        const defaultTab = "{{ initial_view or 'bookings' }}";
         if (window.location.hash === '#inventorySection') {
             switchAdminTab('inventory');
+        } else {
+            switchAdminTab(defaultTab);
         }
 
         function filterTable(tableId, status, btnEl) {
@@ -677,11 +865,7 @@
 
             const rows = document.querySelectorAll(`#${tableId} tbody tr[data-status]`);
             rows.forEach(row => {
-                if (status === 'all' || row.getAttribute('data-status') === status) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+                row.style.display = (status === 'all' || row.getAttribute('data-status') === status) ? '' : 'none';
             });
         }
 
@@ -689,12 +873,70 @@
             const q = query.toLowerCase().trim();
             const rows = document.querySelectorAll(`#${tableId} tbody tr[data-status]`);
             rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(q) ? '' : 'none';
+                row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
             });
         }
 
-        // Client-side image compression so uploaded phone/PC photos save fast in the database
+        function openProcessModal(type, btn) {
+            const b = JSON.parse(btn.getAttribute('data-booking'));
+            document.getElementById('procBookingType').value = type;
+            document.getElementById('procItemId').value = b.id;
+            document.getElementById('procTotalBillRaw').value = b.total_price_raw || 0;
+            document.getElementById('procModalTitle').innerText = `${b.reference_code} — ${b.customer_name}`;
+            document.getElementById('procModalSubtitle').innerText = type === 'room'
+                ? `Room ${b.room_number} (${b.check_in_date} → ${b.check_out_date}) | Total Bill: ₱${b.total_price}`
+                : `Table ${b.table_number} (${b.booking_date} | ${b.time_slot}) | ${b.pax} Pax`;
+
+            document.getElementById('procStatus').value = b.status || 'pending';
+            document.getElementById('procPaymentStatus').value = b.payment_status || 'unpaid';
+            document.getElementById('procPaymentMethod').value = b.payment_method || 'Cash';
+            document.getElementById('procAmountPaid').value = b.amount_paid_raw || 0;
+            document.getElementById('procPaymentRef').value = b.payment_ref || '';
+            document.getElementById('procNotes').value = b.notes || '';
+
+            document.getElementById('processBookingModal').classList.remove('hidden');
+        }
+
+        function fillFullBillAmount() {
+            const raw = parseFloat(document.getElementById('procTotalBillRaw').value || 0);
+            if (raw > 0) {
+                document.getElementById('procAmountPaid').value = raw;
+                document.getElementById('procPaymentStatus').value = 'paid';
+                document.getElementById('procStatus').value = 'confirmed';
+            }
+        }
+
+        function closeProcessModal() {
+            document.getElementById('processBookingModal').classList.add('hidden');
+        }
+
+        async function submitProcessBooking(e) {
+            e.preventDefault();
+            const payload = {
+                booking_type: document.getElementById('procBookingType').value,
+                item_id: parseInt(document.getElementById('procItemId').value),
+                status: document.getElementById('procStatus').value,
+                payment_status: document.getElementById('procPaymentStatus').value,
+                payment_method: document.getElementById('procPaymentMethod').value,
+                amount_paid: parseFloat(document.getElementById('procAmountPaid').value || 0),
+                payment_ref: document.getElementById('procPaymentRef').value,
+                notes: document.getElementById('procNotes').value
+            };
+
+            const res = await fetch('/api/bookings/process', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast('Na-update na ang Booking ug Payment!');
+                setTimeout(() => window.location.reload(), 600);
+            } else {
+                showToast(data.error || 'Error saving.', true);
+            }
+        }
+
         function handlePhotoFileSelect(fileInput, targetInputId, previewImgId) {
             const file = fileInput.files && fileInput.files[0];
             if (!file) return;
@@ -867,6 +1109,7 @@
                 hero_title: document.getElementById('setHeroTitle').value,
                 hero_subtitle: document.getElementById('setHeroSubtitle').value,
                 contact_phone: document.getElementById('setContactPhone').value,
+                gcash_number: document.getElementById('setGcashNumber').value,
                 hero_image: document.getElementById('setHeroImage').value,
                 dining_image: document.getElementById('setDiningImage').value
             };
@@ -883,6 +1126,17 @@
                 showToast(data.error || 'Error updating settings.', true);
             }
         }
+
+        // Live sync PH Time every 15s for Overseas Owner
+        setInterval(async () => {
+            try {
+                const res = await fetch('/api/monitor/summary');
+                if (!res.ok) return;
+                const data = await res.json();
+                const el = document.getElementById('ownerPhTime');
+                if (el) el.innerText = data.stats.ph_time_now;
+            } catch (e) {}
+        }, 15000);
     </script>
     {% endif %}
 </body>

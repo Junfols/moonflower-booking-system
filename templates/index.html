@@ -28,9 +28,13 @@
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <span>Check Booking</span>
                 </button>
+                <a href="/cashier" class="btn btn-outline btn-sm" id="navCashierPortalLink">
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span>Cashier Receiver</span>
+                </a>
                 <a href="/admin" class="btn btn-outline btn-sm" id="navAdminPortalLink">
-                    <i class="fa-solid fa-lock"></i>
-                    <span>Admin Portal</span>
+                    <i class="fa-solid fa-earth-asia"></i>
+                    <span>Owner &amp; Admin</span>
                 </a>
             </div>
         </div>
@@ -244,6 +248,22 @@
                     <input type="tel" id="custPhone" required placeholder="09171234567" class="form-input">
                 </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <div class="form-group">
+                        <label for="custPaymentMethod" class="form-label">Payment Option</label>
+                        <select id="custPaymentMethod" class="form-select">
+                            <option value="Pay at Resort">Pay at Resort (Cash)</option>
+                            <option value="GCash">GCash ({{ settings.gcash_number }})</option>
+                            <option value="Maya">Maya</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="custPaymentRef" class="form-label">GCash / Payment Ref # (Optional)</label>
+                        <input type="text" id="custPaymentRef" placeholder="If paid via GCash" class="form-input">
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="custNotes" class="form-label">Special Requests / Notes (Optional)</label>
                     <textarea id="custNotes" rows="2" placeholder="Pananglitan: Late check-in, extra pillow, birthday table setup..." class="form-textarea"></textarea>
@@ -280,7 +300,7 @@
                 </div>
                 <span class="brand-subtitle">Moonflower Official Slip</span>
                 <h3 class="font-display" style="font-size: 1.85rem; font-weight: 700;">Malampusong Na-save!</h3>
-                <p style="font-size: 0.82rem; color: var(--text-secondary);">I-save o i-screenshot kining imong Reference Code.</p>
+                <p style="font-size: 0.82rem; color: var(--text-secondary);">Nadawat na sa Frontdesk Cashier ang imong request. I-save kining Reference Code.</p>
             </div>
 
             <div class="receipt-box" id="receiptDetailsBox"></div>
@@ -310,7 +330,9 @@
             <div>
                 <span>Frontdesk: <strong>{{ settings.contact_phone }}</strong></span>
                 <span style="margin: 0 0.6rem;">&bull;</span>
-                <a href="/admin" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">Staff Login</a>
+                <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Login</a>
+                <span style="margin: 0 0.6rem;">&bull;</span>
+                <a href="/admin" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">Owner &amp; Admin</a>
             </div>
         </div>
     </footer>
@@ -592,6 +614,10 @@
                     <span style="color:var(--text-secondary);">Total / Details:</span>
                     <strong style="color:var(--brand-primary);">${escapeHtml(receipt.amount)}</strong>
                 </div>
+                <div class="receipt-row">
+                    <span style="color:var(--text-secondary);">Payment Option:</span>
+                    <span>${escapeHtml(receipt.payment_method || 'Pay at Resort')} ${receipt.payment_ref ? '(' + escapeHtml(receipt.payment_ref) + ')' : ''}</span>
+                </div>
                 ${receipt.notes ? `
                 <div class="receipt-row">
                     <span style="color:var(--text-secondary);">Notes:</span>
@@ -612,6 +638,8 @@
             const name = document.getElementById('custName').value;
             const phone = document.getElementById('custPhone').value;
             const notes = document.getElementById('custNotes').value;
+            const paymentMethod = document.getElementById('custPaymentMethod').value;
+            const paymentRef = document.getElementById('custPaymentRef').value;
 
             if (type === 'room') {
                 const payload = {
@@ -619,6 +647,8 @@
                     name: name,
                     phone: phone,
                     notes: notes,
+                    payment_method: paymentMethod,
+                    payment_ref: paymentRef,
                     check_in: roomCheckInEl.value,
                     check_out: roomCheckOutEl.value
                 };
@@ -632,7 +662,7 @@
 
                 if (res.ok) {
                     closeModal();
-                    showToast('Malampusong na-book ang Kwarto!');
+                    showToast('Malampusong na-book ang Kwarto! Nadawat na sa Cashier.');
                     showReceiptSlip({
                         reference_code: data.reference_code || `#${data.booking_id}`,
                         customer_name: name,
@@ -640,6 +670,8 @@
                         title: `Room ${data.room_number} — ${data.room_type}`,
                         schedule: `${payload.check_in} → ${payload.check_out} (${data.nights} night/s)`,
                         amount: `₱${Number(data.total_price).toLocaleString()}`,
+                        payment_method: paymentMethod,
+                        payment_ref: paymentRef,
                         notes: notes,
                         status: 'PENDING'
                     });
@@ -654,6 +686,8 @@
                     name: name,
                     phone: phone,
                     notes: notes,
+                    payment_method: paymentMethod,
+                    payment_ref: paymentRef,
                     date: tableDateEl.value,
                     time_slot: document.getElementById('tableTimeSlot').value,
                     pax: parseInt(document.getElementById('tablePax').value)
@@ -668,7 +702,7 @@
 
                 if (res.ok) {
                     closeModal();
-                    showToast('Malampusong na-reserve ang Lamesa!');
+                    showToast('Malampusong na-reserve ang Lamesa! Nadawat na sa Cashier.');
                     showReceiptSlip({
                         reference_code: data.reference_code || `#${data.reservation_id}`,
                         customer_name: name,
@@ -676,6 +710,8 @@
                         title: `Table ${data.table_number} (${data.location})`,
                         schedule: `${payload.date} | ${payload.time_slot}`,
                         amount: `${payload.pax} Pax`,
+                        payment_method: paymentMethod,
+                        payment_ref: paymentRef,
                         notes: notes,
                         status: 'PENDING'
                     });
@@ -724,6 +760,10 @@
                                 <p style="font-size:0.84rem; color:var(--text-secondary);">
                                     <i class="fa-regular fa-user"></i> ${escapeHtml(item.customer_name)} &bull;
                                     <i class="fa-regular fa-clock"></i> ${escapeHtml(item.schedule)}
+                                </p>
+                                <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.35rem;">
+                                    Payment: <strong>${escapeHtml(item.payment_status)}</strong> (Paid: ${escapeHtml(item.amount_paid)} via ${escapeHtml(item.payment_method)})
+                                    &bull; Processed by: <strong>${escapeHtml(item.handled_by)}</strong>
                                 </p>
                             </div>
                             <div style="text-align:right;">
