@@ -90,7 +90,7 @@
                             <td class="px-6 py-4 text-slate-600">{{ b.customer_phone }}</td>
                             <td class="px-6 py-4">Room {{ b.room.room_number }} ({{ b.room.room_type }})</td>
                             <td class="px-6 py-4 font-mono text-slate-600">{{ b.check_in_date }} → {{ b.check_out_date }}</td>
-                            <td class="px-6 py-4 font-bold text-slate-900">₱{{ "{:,.2f}".format(b.total_price) }}</td>
+                            <td class="px-6 py-4 font-bold text-slate-900">₱{{ b.total_price }}</td>
                             <td class="px-6 py-4">
                                 <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold 
                                     {% if b.status == 'confirmed' %}bg-green-100 text-green-700 border border-green-200
@@ -99,7 +99,10 @@
                                     {{ b.status.upper() }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 font-bold text-slate-900">₱{{ b.total_price }}</td>w
+                            <td class="px-6 py-4 space-x-1">
+                                <a href="/admin/action/room/{{ b.id }}/confirmed" class="text-xs bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded-lg transition">Confirm</a>
+                                <a href="/admin/action/room/{{ b.id }}/cancelled" class="text-xs bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded-lg transition">Cancel</a>
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
@@ -168,4 +171,3 @@
     </main>
 </body>
 </html>
-a
