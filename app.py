@@ -48,6 +48,28 @@ class AuditLog(db.Model):
     details = db.Column(db.Text, nullable=False)
 
 
+class StaffAccount(db.Model):
+    __tablename__ = 'staff_accounts'
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(100), nullable=False)
+    username = db.Column(db.String(60), unique=True, nullable=False)
+    pin_or_password = db.Column(db.String(100), nullable=False)
+    shift_schedule = db.Column(db.String(80), default='Day Shift (8:00 AM - 5:00 PM)')
+    is_on_duty = db.Column(db.Boolean, default=True)
+    created_at_ph = db.Column(db.String(40), default='')
+
+
+@app.after_request
+def add_no_cache_headers(response):
+    """Prevent browser or proxy caching of authenticated portals and logout redirects."""
+    path = request.path or ''
+    if path.startswith('/admin') or path.startswith('/cashier') or path.startswith('/owner') or path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+
 class Room(db.Model):
     __tablename__ = 'rooms'
     id = db.Column(db.Integer, primary_key=True)
@@ -338,6 +360,16 @@ def seed_data_if_empty():
             ]
             if items_to_add:
                 db.session.bulk_save_objects(items_to_add)
+
+        if not StaffAccount.query.first():
+            db.session.add(StaffAccount(
+                full_name='Frontdesk Cashier 1',
+                username='cashier1',
+                pin_or_password=CASHIER_PASSWORD,
+                shift_schedule='Day Shift (8:00 AM - 5:00 PM)',
+                is_on_duty=True,
+                created_at_ph=now_ph_str()
+            ))
 
         db.session.commit()
 
@@ -866,6 +898,17 @@ def build_dashboard_context():
         'details': log.details
     } for log in recent_logs]
 
+    all_staff = StaffAccount.query.order_by(StaffAccount.is_on_duty.desc(), StaffAccount.full_name.asc()).all()
+    staff_list = [{
+        'id': s.id,
+        'full_name': s.full_name,
+        'username': s.username,
+        'pin_or_password': s.pin_or_password,
+        'shift_schedule': s.shift_schedule or 'Day Shift',
+        'is_on_duty': s.is_on_duty,
+        'created_at_ph': s.created_at_ph or ''
+    } for s in all_staff]
+
     collectible_balance = max(0.0, confirmed_revenue - total_collected)
 
     stats = {
@@ -883,6 +926,8 @@ def build_dashboard_context():
         'total_rooms': len(rooms_list),
         'available_foods': sum(1 for m in menu_list if m['is_available']),
         'total_foods': len(menu_list),
+        'on_duty_staff': sum(1 for s in staff_list if s['is_on_duty']),
+        'total_staff': len(staff_list),
         'ph_time_now': now_ph_str()
     }
 
@@ -893,6 +938,7 @@ def build_dashboard_context():
         'food_bookings': food_bookings,
         'rooms_list': rooms_list,
         'menu_list': menu_list,
+        'staff_list': staff_list,
         'audit_logs': audit_logs
     }
 
@@ -900,45 +946,115 @@ def build_dashboard_context():
 # ==========================================
 # 2. CASHIER / FRONTDESK RECEIVER PORTAL (/cashier)
 # ==========================================
+def get_on_duty_staff_summary():
+    on_duty = StaffAccount.query.filter_by(is_on_duty=True).order_by(StaffAccount.full_name.asc()).all()
+    return [{
+        'id': s.id,
+        'full_name': s.full_name,
+        'username': s.username,
+        'shift_schedule': s.shift_schedule or 'Day Shift'
+    } for s in on_duty]
+
+
+def ensure_cashier_still_on_duty():
+    if session.get('is_admin') or session.get('is_owner'):
+        return True
+    if not session.get('is_cashier'):
+        return False
+    staff_id = session.get('staff_id')
+    staff = db.session.get(StaffAccount, int(staff_id)) if staff_id else None
+    if not staff or not staff.is_on_duty:
+        session.clear()
+        return False
+    session['staff_name'] = staff.full_name
+    return True
+
+
 @app.route('/cashier', methods=['GET', 'POST'])
 def cashier_portal():
+    on_duty_staff = get_on_duty_staff_summary()
+
     if request.method == 'POST':
-        staff_name = (request.form.get('staff_name') or 'Frontdesk Cashier').strip()
-        pw = request.form.get('password')
-        if pw in (CASHIER_PASSWORD, ADMIN_PASSWORD, OWNER_PASSWORD):
-            session['is_cashier'] = True
-            session['staff_name'] = staff_name
-            session['staff_role'] = 'CASHIER'
-            record_audit('CASHIER', staff_name, 'STAFF_LOGIN', '', f"Cashier {staff_name} logged into Receiver Terminal.")
-            return redirect(url_for('cashier_portal'))
-        return render_template('cashier.html', error="Incorrect Cashier Password. Please try again.", authed=False)
+        username = (request.form.get('username') or '').strip().lower()
+        pw = (request.form.get('password') or '').strip()
+        staff = StaffAccount.query.filter(db.func.lower(StaffAccount.username) == username).first() if username else None
+
+        if not staff or staff.pin_or_password != pw:
+            return render_template(
+                'cashier.html',
+                error="Invalid staff username or password. Please check with Admin.",
+                authed=False,
+                on_duty_staff=on_duty_staff
+            )
+
+        if not staff.is_on_duty:
+            record_audit(
+                'CASHIER',
+                staff.full_name,
+                'STAFF_LOGIN_BLOCKED',
+                f"STF-{staff.id:03d}",
+                f"Blocked off-duty login attempt by {staff.full_name} (@{staff.username})."
+            )
+            return render_template(
+                'cashier.html',
+                error=f"Access Denied: {staff.full_name} is currently OFF DUTY. Only Admin/Owner can set staff ON DUTY.",
+                authed=False,
+                on_duty_staff=on_duty_staff
+            )
+
+        session.clear()
+        session['is_cashier'] = True
+        session['staff_id'] = staff.id
+        session['staff_name'] = staff.full_name
+        session['staff_role'] = 'CASHIER'
+        record_audit(
+            'CASHIER',
+            staff.full_name,
+            'STAFF_LOGIN',
+            f"STF-{staff.id:03d}",
+            f"On-duty staff {staff.full_name} (@{staff.username}) logged into Receiver Terminal."
+        )
+        return redirect(url_for('cashier_portal'))
 
     if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
-        return render_template('cashier.html', authed=False)
+        return render_template('cashier.html', authed=False, on_duty_staff=on_duty_staff)
+
+    if session.get('is_cashier') and not (session.get('is_admin') or session.get('is_owner')):
+        if not ensure_cashier_still_on_duty():
+            return render_template(
+                'cashier.html',
+                error="Your receiver duty shift was ended or disabled by Admin/Owner.",
+                authed=False,
+                on_duty_staff=on_duty_staff
+            )
 
     ctx = build_dashboard_context()
     return render_template(
         'cashier.html',
         authed=True,
         staff_name=session.get('staff_name', 'Frontdesk Receiver'),
+        is_admin_viewing=bool(session.get('is_admin') or session.get('is_owner')),
         **ctx
     )
 
 
 @app.route('/cashier/logout')
 def cashier_logout():
-    staff_name = session.get('staff_name', 'Frontdesk Cashier')
-    record_audit('CASHIER', staff_name, 'STAFF_LOGOUT', '', f"Cashier {staff_name} logged out.")
-    session.pop('is_cashier', None)
-    session.pop('staff_name', None)
+    actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN' if session.get('is_admin') else 'CASHIER'
+    staff_name = session.get('staff_name')
+    if staff_name:
+        record_audit(actor_role, staff_name, 'STAFF_LOGOUT', '', f"{staff_name} logged out cleanly from Receiver Terminal.")
+    session.clear()
     return redirect(url_for('cashier_portal'))
 
 
 @app.route('/api/bookings/process', methods=['POST'])
 def process_booking_request():
-    """Used by Cashier, Admin, or Owner to confirm/cancel a booking, assign Table & Chairs, and record payment."""
+    """Used by on-duty Cashier, Admin, or Owner to confirm/cancel a booking, assign Table & Chairs, and record payment."""
     if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
         return jsonify({'error': 'Unauthorized'}), 401
+    if not ensure_cashier_still_on_duty():
+        return jsonify({'error': 'Duty access disabled by Admin/Owner. Please log in again when on duty.'}), 403
 
     payload = request.json or {}
     booking_type = payload.get('booking_type')
@@ -996,6 +1112,7 @@ def owner_portal():
     if request.method == 'POST':
         pw = request.form.get('password')
         if pw == OWNER_PASSWORD or pw == ADMIN_PASSWORD:
+            session.clear()
             session['is_admin'] = True
             session['is_owner'] = True
             session['staff_name'] = 'Overseas Owner'
@@ -1015,12 +1132,14 @@ def admin():
         pw = request.form.get('password')
         role_select = request.form.get('role_select', 'admin')
         if pw == OWNER_PASSWORD:
+            session.clear()
             session['is_admin'] = True
             session['is_owner'] = True
             session['staff_name'] = 'Overseas Owner'
             record_audit('OWNER', 'Overseas Owner', 'OWNER_LOGIN', '', 'Owner logged into Remote Monitor & Admin.')
             return redirect(url_for('admin', view='monitor'))
         elif pw == ADMIN_PASSWORD:
+            session.clear()
             session['is_admin'] = True
             session['is_owner'] = (role_select == 'owner')
             session['staff_name'] = 'Overseas Owner' if role_select == 'owner' else 'System Admin'
@@ -1045,9 +1164,11 @@ def admin():
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.pop('is_admin', None)
-    session.pop('is_owner', None)
-    session.pop('staff_name', None)
+    actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+    staff_name = session.get('staff_name')
+    if staff_name:
+        record_audit(actor_role, staff_name, 'ADMIN_LOGOUT', '', f"{staff_name} logged out cleanly from Admin/Owner Portal.")
+    session.clear()
     return redirect(url_for('admin'))
 
 
@@ -1055,6 +1176,8 @@ def admin_logout():
 def monitor_summary_api():
     if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
         return jsonify({'error': 'Unauthorized'}), 401
+    if not ensure_cashier_still_on_duty():
+        return jsonify({'error': 'Duty access revoked by Admin/Owner.'}), 403
     ctx = build_dashboard_context()
     return jsonify({
         'stats': ctx['stats'],
@@ -1066,6 +1189,8 @@ def monitor_summary_api():
 def update_booking_status(booking_type, item_id, new_status):
     if not (session.get('is_admin') or session.get('is_cashier') or session.get('is_owner')):
         return redirect(url_for('admin'))
+    if not ensure_cashier_still_on_duty():
+        return redirect(url_for('cashier_portal'))
 
     if new_status == 'delete' and not (session.get('is_admin') or session.get('is_owner')):
         return redirect(url_for('cashier_portal'))
@@ -1251,6 +1376,102 @@ def save_site_settings():
     actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
     record_audit(actor_role, session.get('staff_name', actor_role), 'SITE_SETTINGS_UPDATE', '', 'Updated website banner pictures & MoonFlower Garden Camiguin settings.')
     return jsonify({'message': 'Site photos & settings updated!'})
+
+
+@app.route('/admin/staff/save', methods=['POST'])
+def save_staff_account():
+    if not (session.get('is_admin') or session.get('is_owner')):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    payload = request.json or request.form
+    raw_id = str(payload.get('id') or '').strip()
+    full_name = (payload.get('full_name') or '').strip()
+    username = ''.join((payload.get('username') or '').strip().lower().split())
+    pin_or_password = (payload.get('pin_or_password') or '').strip()
+    shift_schedule = (payload.get('shift_schedule') or 'Day Shift (8:00 AM - 5:00 PM)').strip()
+    raw_duty = payload.get('is_on_duty', False)
+    if isinstance(raw_duty, bool):
+        is_on_duty = raw_duty
+    else:
+        is_on_duty = str(raw_duty).strip().lower() in ('true', '1', 'yes', 'on')
+
+    if not full_name or not username or not pin_or_password:
+        return jsonify({'error': 'Full name, username, and PIN/password are required.'}), 400
+
+    actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+    actor_name = session.get('staff_name', actor_role)
+    existing = StaffAccount.query.filter(db.func.lower(StaffAccount.username) == username).first()
+
+    if raw_id.isdigit():
+        staff = db.session.get(StaffAccount, int(raw_id))
+        if not staff:
+            return jsonify({'error': 'Staff account not found.'}), 404
+        if existing and existing.id != staff.id:
+            return jsonify({'error': f"Username '{username}' is already used by another staff member."}), 409
+        staff.full_name = full_name
+        staff.username = username
+        staff.pin_or_password = pin_or_password
+        staff.shift_schedule = shift_schedule
+        staff.is_on_duty = is_on_duty
+        action_desc = f"Updated staff {full_name} (@{username}) — Duty: {'ON DUTY' if is_on_duty else 'OFF DUTY'} ({shift_schedule})"
+    else:
+        if existing:
+            return jsonify({'error': f"Username '{username}' already exists."}), 409
+        staff = StaffAccount(
+            full_name=full_name,
+            username=username,
+            pin_or_password=pin_or_password,
+            shift_schedule=shift_schedule,
+            is_on_duty=is_on_duty,
+            created_at_ph=now_ph_str()
+        )
+        db.session.add(staff)
+        db.session.flush()
+        action_desc = f"Added staff {full_name} (@{username}) — Duty: {'ON DUTY' if is_on_duty else 'OFF DUTY'} ({shift_schedule})"
+
+    db.session.commit()
+    record_audit(actor_role, actor_name, 'STAFF_ROSTER_UPDATE', f"STF-{staff.id:03d}", action_desc)
+    return jsonify({'message': 'Staff account & duty schedule saved!', 'id': staff.id})
+
+
+@app.route('/admin/staff/toggle/<int:staff_id>')
+def toggle_staff_duty(staff_id):
+    if not (session.get('is_admin') or session.get('is_owner')):
+        return redirect(url_for('admin'))
+    staff = db.session.get(StaffAccount, staff_id)
+    if staff:
+        staff.is_on_duty = not staff.is_on_duty
+        db.session.commit()
+        actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+        status_label = 'ON DUTY' if staff.is_on_duty else 'OFF DUTY'
+        record_audit(
+            actor_role,
+            session.get('staff_name', actor_role),
+            'STAFF_DUTY_TOGGLE',
+            f"STF-{staff.id:03d}",
+            f"Set {staff.full_name} (@{staff.username}) to {status_label}"
+        )
+    return redirect(url_for('admin', view='staff'))
+
+
+@app.route('/admin/staff/delete/<int:staff_id>')
+def delete_staff_account(staff_id):
+    if not (session.get('is_admin') or session.get('is_owner')):
+        return redirect(url_for('admin'))
+    staff = db.session.get(StaffAccount, staff_id)
+    if staff:
+        sname = f"{staff.full_name} (@{staff.username})"
+        db.session.delete(staff)
+        db.session.commit()
+        actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
+        record_audit(
+            actor_role,
+            session.get('staff_name', actor_role),
+            'STAFF_ACCOUNT_DELETE',
+            f"STF-{staff_id:03d}",
+            f"Removed staff account {sname}"
+        )
+    return redirect(url_for('admin', view='staff'))
 
 
 @app.route('/admin/export/<export_type>')

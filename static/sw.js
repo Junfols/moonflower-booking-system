@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moonflower-pwa-v1';
+const CACHE_NAME = 'moonflower-pwa-v2';
 const STATIC_ASSETS = [
   '/static/style.css',
   '/static/manifest.json',
@@ -24,7 +24,8 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (event.request.method !== 'GET' || url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin') || url.pathname.startsWith('/cashier')) {
+  // Only cache static assets; NEVER cache HTML pages, logins, logouts, or API routes
+  if (event.request.method !== 'GET' || !url.pathname.startsWith('/static/')) {
     return;
   }
   event.respondWith(

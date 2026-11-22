@@ -166,6 +166,10 @@
                     <i class="fa-solid fa-sliders"></i>
                     <span>Banner Photos &amp; GCash Info</span>
                 </button>
+                <button type="button" id="adminTabStaffBtn" onclick="switchAdminTab('staff')" class="mode-tab-btn">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span>Staff Duty Roster ({{ stats.on_duty_staff }}/{{ stats.total_staff }})</span>
+                </button>
             </nav>
         </div>
 
@@ -673,6 +677,86 @@
             </section>
         </div>
 
+        <!-- TAB 5: STAFF DUTY ROSTER & RECEIVER TERMINAL ACCESS CONTROL -->
+        <div id="adminSectionStaff" class="hidden">
+            <section class="panel-card">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Receiver Staff &amp; Duty Roster Control</h2>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary);">
+                            Only the Admin or Overseas Owner decides who goes <strong>ON DUTY</strong> for the Cashier / Receiver Terminal. Off-duty staff cannot log in or process bookings.
+                        </p>
+                    </div>
+                    <button type="button" onclick="openStaffEditorModal()" class="btn btn-accent btn-sm">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Add Staff Account</span>
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Staff Member</th>
+                                <th>Username</th>
+                                <th>Password / PIN</th>
+                                <th>Shift Schedule</th>
+                                <th>Duty Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for st in staff_list %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 700; color: var(--text-primary);">{{ st.full_name }}</div>
+                                    <div style="font-size: 0.72rem; color: var(--text-muted);">Added: {{ st.created_at_ph or 'Default' }}</div>
+                                </td>
+                                <td>
+                                    <code style="background: var(--surface-muted); padding: 0.2rem 0.45rem; border-radius: 6px; font-weight: 600;">@{{ st.username }}</code>
+                                </td>
+                                <td>
+                                    <code style="background: var(--surface-muted); padding: 0.2rem 0.45rem; border-radius: 6px;">{{ st.pin_or_password }}</code>
+                                </td>
+                                <td style="font-size: 0.82rem;">{{ st.shift_schedule }}</td>
+                                <td>
+                                    {% if st.is_on_duty %}
+                                    <span class="status-badge status-confirmed">
+                                        <i class="fa-solid fa-circle-check" style="margin-right: 0.25rem;"></i> ON DUTY
+                                    </span>
+                                    {% else %}
+                                    <span class="status-badge status-cancelled">
+                                        <i class="fa-solid fa-ban" style="margin-right: 0.25rem;"></i> OFF DUTY
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                                        <a href="/admin/staff/toggle/{{ st.id }}" class="btn btn-sm {{ 'btn-outline' if st.is_on_duty else 'btn-primary' }}">
+                                            {{ 'Set Off Duty' if st.is_on_duty else 'Set On Duty' }}
+                                        </a>
+                                        <button type="button" data-staff='{{ st | tojson | forceescape }}' onclick="openStaffEditorFromBtn(this)" class="btn btn-outline btn-sm">
+                                            Edit
+                                        </button>
+                                        <a href="/admin/staff/delete/{{ st.id }}" onclick="return confirm('Delete staff account for {{ st.full_name }}?');" class="btn btn-danger btn-sm">
+                                            Delete
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                    No staff accounts created yet. Click <strong>Add Staff Account</strong> to authorize a frontdesk receiver.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
     </main>
 
     <!-- PROCESS BOOKING, TABLE/CHAIRS & PAYMENT MODAL -->
@@ -864,6 +948,48 @@
         </div>
     </div>
 
+    <!-- STAFF ACCOUNT & DUTY ROSTER MODAL -->
+    <div id="staffEditorModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <button type="button" onclick="closeStaffEditorModal()" class="modal-close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <span class="brand-subtitle" style="color: var(--brand-accent);">Receiver Terminal Access Control</span>
+            <h3 id="staffEditorTitle" class="font-display" style="font-size: 1.7rem; font-weight: 700; margin-bottom: 0.9rem;">Add Staff Account</h3>
+
+            <form id="staffEditorForm" onsubmit="submitStaffSave(event)" style="display: flex; flex-direction: column; gap: 0.9rem;">
+                <input type="hidden" id="editStaffId">
+                <div class="form-group">
+                    <label for="editStaffFullName" class="form-label">Staff Full Name *</label>
+                    <input type="text" id="editStaffFullName" required placeholder="e.g. Maria Santos" class="form-input">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+                    <div class="form-group">
+                        <label for="editStaffUsername" class="form-label">Login Username *</label>
+                        <input type="text" id="editStaffUsername" required placeholder="e.g. maria" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="editStaffPin" class="form-label">Password / PIN *</label>
+                        <input type="text" id="editStaffPin" required placeholder="e.g. moon123" class="form-input">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editStaffShift" class="form-label">Shift Schedule</label>
+                    <input type="text" id="editStaffShift" placeholder="e.g. Day Shift (8:00 AM - 5:00 PM)" class="form-input">
+                </div>
+                <label style="display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem; background: var(--surface-muted); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); cursor: pointer;">
+                    <input type="checkbox" id="editStaffOnDuty" style="width: 18px; height: 18px;">
+                    <span style="font-size: 0.84rem; font-weight: 600; color: var(--text-primary);">Set Staff ON DUTY (Allow login to Receiver Terminal)</span>
+                </label>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem;">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Staff &amp; Duty Status</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div id="toastContainer" class="toast-container"></div>
 
     <script>
@@ -881,16 +1007,19 @@
                 monitor: document.getElementById('adminSectionMonitor'),
                 bookings: document.getElementById('adminSectionBookings'),
                 inventory: document.getElementById('adminSectionInventory'),
-                settings: document.getElementById('adminSectionSettings')
+                settings: document.getElementById('adminSectionSettings'),
+                staff: document.getElementById('adminSectionStaff')
             };
             const btns = {
                 monitor: document.getElementById('adminTabMonitorBtn'),
                 bookings: document.getElementById('adminTabBookingsBtn'),
                 inventory: document.getElementById('adminTabInventoryBtn'),
-                settings: document.getElementById('adminTabSettingsBtn')
+                settings: document.getElementById('adminTabSettingsBtn'),
+                staff: document.getElementById('adminTabStaffBtn')
             };
+            const target = sections[tab] ? tab : 'bookings';
             Object.keys(sections).forEach(k => {
-                if (k === tab) {
+                if (k === target) {
                     sections[k].classList.remove('hidden');
                     btns[k].classList.add('active');
                 } else {
@@ -898,6 +1027,59 @@
                     btns[k].classList.remove('active');
                 }
             });
+        }
+
+        function openStaffEditorModal(staff = null) {
+            if (staff) {
+                document.getElementById('staffEditorTitle').innerText = `Edit Staff: ${staff.full_name}`;
+                document.getElementById('editStaffId').value = staff.id;
+                document.getElementById('editStaffFullName').value = staff.full_name;
+                document.getElementById('editStaffUsername').value = staff.username;
+                document.getElementById('editStaffPin').value = staff.pin_or_password;
+                document.getElementById('editStaffShift').value = staff.shift_schedule || 'Day Shift (8:00 AM - 5:00 PM)';
+                document.getElementById('editStaffOnDuty').checked = Boolean(staff.is_on_duty);
+            } else {
+                document.getElementById('staffEditorTitle').innerText = 'Add Staff Account';
+                document.getElementById('staffEditorForm').reset();
+                document.getElementById('editStaffId').value = '';
+                document.getElementById('editStaffShift').value = 'Day Shift (8:00 AM - 5:00 PM)';
+                document.getElementById('editStaffOnDuty').checked = true;
+            }
+            document.getElementById('staffEditorModal').classList.remove('hidden');
+        }
+
+        function openStaffEditorFromBtn(btn) {
+            const staff = JSON.parse(btn.getAttribute('data-staff'));
+            openStaffEditorModal(staff);
+        }
+
+        function closeStaffEditorModal() {
+            document.getElementById('staffEditorModal').classList.add('hidden');
+        }
+
+        async function submitStaffSave(e) {
+            e.preventDefault();
+            const payload = {
+                id: document.getElementById('editStaffId').value || null,
+                full_name: document.getElementById('editStaffFullName').value,
+                username: document.getElementById('editStaffUsername').value,
+                pin_or_password: document.getElementById('editStaffPin').value,
+                shift_schedule: document.getElementById('editStaffShift').value,
+                is_on_duty: document.getElementById('editStaffOnDuty').checked
+            };
+
+            const res = await fetch('/admin/staff/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast('Staff account & duty schedule saved!');
+                window.location.href = '/admin?view=staff';
+            } else {
+                showToast(data.error || 'Error saving staff account.', true);
+            }
         }
 
         const defaultTab = "{{ initial_view or 'bookings' }}";
