@@ -99,10 +99,7 @@
                                     {{ b.status.upper() }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 space-x-1">
-                                <a href="/admin/action/room/{{ b.id }}/confirmed" class="text-xs bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded-lg transition">Confirm</a>
-                                <a href="/admin/action/room/{{ b.id }}/cancelled" class="text-xs bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded-lg transition">Cancel</a>
-                            </td>
+                            <td class="px-6 py-4 font-bold text-slate-900">₱{{ b.total_price }}</td>w
                         </tr>
                         {% else %}
                         <tr>
@@ -171,3 +168,4 @@
     </main>
 </body>
 </html>
+a
