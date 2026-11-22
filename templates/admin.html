@@ -674,6 +674,23 @@
                         <span>Save Banner Photos &amp; Settings</span>
                     </button>
                 </form>
+
+                <div style="margin-top: 1.75rem; padding: 1rem; border-radius: var(--radius-md); background: var(--surface-muted); border: 1px solid var(--border-subtle);">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
+                        <i class="fa-solid fa-heart-pulse" style="color: var(--brand-primary); margin-right: 0.35rem;"></i>
+                        Render Anti-Sleep Health Endpoint (<code style="font-size: 0.8rem;">/health</code>)
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.65rem;">
+                        Render Free Tier puts the server to sleep after 15 minutes with no external traffic. Built-in auto-ping runs while active, and for 24/7 zero-sleep reliability, point a free external monitor (<strong>UptimeRobot</strong> or <strong>cron-job.org</strong>, every 5 minutes) to this URL:
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <input type="text" id="renderHealthUrlPreview" readonly class="form-input" style="flex: 1; min-width: 240px; font-family: monospace; font-size: 0.82rem; background: #fff;">
+                        <button type="button" onclick="copyHealthUrl()" class="btn btn-outline btn-sm">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copy /health URL</span>
+                        </button>
+                    </div>
+                </div>
             </section>
         </div>
 
@@ -1368,6 +1385,28 @@
                 showToast('Banner photos & site settings updated!');
             } else {
                 showToast(data.error || 'Error updating settings.', true);
+            }
+        }
+
+        const healthPreviewEl = document.getElementById('renderHealthUrlPreview');
+        if (healthPreviewEl) {
+            healthPreviewEl.value = `${window.location.origin}/health`;
+        }
+
+        function copyHealthUrl() {
+            const input = document.getElementById('renderHealthUrlPreview');
+            if (!input) return;
+            input.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(input.value).then(() => {
+                    showToast('Copied /health URL!');
+                }).catch(() => {
+                    document.execCommand('copy');
+                    showToast('Copied /health URL!');
+                });
+            } else {
+                document.execCommand('copy');
+                showToast('Copied /health URL!');
             }
         }
 

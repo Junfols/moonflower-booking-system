@@ -2,6 +2,9 @@ import os
 import csv
 import io
 import json
+import time
+import threading
+import urllib.request
 from datetime import datetime, date, timezone, timedelta
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
@@ -390,6 +393,22 @@ def pwa_service_worker():
     response.headers['Content-Type'] = 'application/javascript'
     response.headers['Service-Worker-Allowed'] = '/'
     return response
+
+
+@app.route('/health', methods=['GET', 'HEAD'])
+@app.route('/healthz', methods=['GET', 'HEAD'])
+@app.route('/ping', methods=['GET', 'HEAD'])
+def health_check():
+    """Lightweight health check endpoint for uptime monitors and Render keep-alive."""
+    if request.method == 'HEAD':
+        return Response(status=200, headers={'Cache-Control': 'no-store, no-cache'})
+    resp = jsonify({
+        'status': 'ok',
+        'service': 'moonflower-booking-system',
+        'ph_time': now_ph_str()
+    })
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp, 200
 
 
 # ==========================================
@@ -1508,7 +1527,56 @@ def export_csv(export_type):
     )
 
 
+_KEEPALIVE_LOCK = threading.Lock()
+_KEEPALIVE_STARTED = False
+
+
+def start_render_keepalive():
+    """Pings the public Render /health URL every 9 minutes while awake to prevent 15-min idle spin-down."""
+    global _KEEPALIVE_STARTED
+    enabled = os.environ.get('ENABLE_SELF_KEEPALIVE', '1').strip().lower() in ('1', 'true', 'yes', 'on')
+    if not enabled:
+        return
+    if os.environ.get('PYTEST_CURRENT_TEST') or app.config.get('TESTING'):
+        return
+    if os.environ.get('FLASK_DEBUG') == '1' and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        return
+
+    target_base = (os.environ.get('KEEP_ALIVE_URL') or os.environ.get('RENDER_EXTERNAL_URL') or '').strip()
+    if not target_base.startswith(('http://', 'https://')):
+        return
+
+    try:
+        interval = max(60, int(os.environ.get('KEEP_ALIVE_INTERVAL_SECONDS', '540') or '540'))
+    except ValueError:
+        interval = 540
+    health_url = f"{target_base.rstrip('/')}/health"
+
+    with _KEEPALIVE_LOCK:
+        if _KEEPALIVE_STARTED:
+            return
+        _KEEPALIVE_STARTED = True
+
+    def _keepalive_loop():
+        time.sleep(min(interval, 90))
+        while True:
+            try:
+                req = urllib.request.Request(
+                    health_url,
+                    headers={'User-Agent': 'Moonflower-KeepAlive/1.0'}
+                )
+                with urllib.request.urlopen(req, timeout=15) as res:
+                    _ = res.status
+            except Exception:
+                pass
+            time.sleep(interval)
+
+    thread = threading.Thread(target=_keepalive_loop, daemon=True, name='render-keepalive')
+    thread.start()
+
+
 seed_data_if_empty()
+start_render_keepalive()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

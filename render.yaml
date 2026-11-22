@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: moonflower-booking-system
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: ENABLE_SELF_KEEPALIVE
+        value: "1"
+      - key: KEEP_ALIVE_INTERVAL_SECONDS
+        value: "540"

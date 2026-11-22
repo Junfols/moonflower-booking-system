@@ -1,0 +1,16 @@
+name: Keep Render Web Service Awake
+
+on:
+  schedule:
+    # Runs every 10 minutes only when RENDER_HEALTH_URL repository variable is configured
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    if: ${{ vars.RENDER_HEALTH_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Moonflower Health Endpoint
+        run: |
+          curl -fsS --max-time 65 "${{ vars.RENDER_HEALTH_URL }}"
