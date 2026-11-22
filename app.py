@@ -303,25 +303,40 @@ def seed_data_if_empty():
             ]
             db.session.bulk_save_objects(rooms)
 
-        # If menu is empty or still holds old sample placeholder items, seed the authentic 54-item Moonflower Menu
+        # Replace legacy placeholder menu items (without touching any custom admin-added items) and ensure authentic Moonflower menu exists
+        legacy_names = {
+            'Crispy Pata Family Size',
+            'Garlic Buttered Prawns',
+            'Grilled Tuna Belly (Sinugba)',
+            'Sinigang na Baboy sa Sampalok',
+            'Moonflower Seafood Pancit Canton',
+            'Native Chicken Tinola / Halang-Halang',
+            'Native Chicken Tinola',
+            'Garlic Rice Platter (Good for 4-5)',
+            'Fresh Mango Shake / Buko Pandan Pitcher',
+            'Pork Sinigang in Tamarind Broth',
+        }
         existing_menu = MenuItem.query.all()
-        has_legacy_placeholder = any(m.name == 'Garlic Rice Platter (Good for 4-5)' for m in existing_menu)
-        if not existing_menu or has_legacy_placeholder:
-            if has_legacy_placeholder and not FoodBooking.query.first():
-                MenuItem.query.delete()
-                db.session.commit()
-            if not MenuItem.query.first():
-                items_to_add = [
-                    MenuItem(
-                        name=name,
-                        category=cat,
-                        price=price,
-                        description=desc,
-                        image_url='',
-                        is_available=True
-                    )
-                    for name, cat, price, desc in REAL_MOONFLOWER_MENU
-                ]
+        if not existing_menu or any(m.name in legacy_names for m in existing_menu):
+            for m in existing_menu:
+                if m.name in legacy_names:
+                    db.session.delete(m)
+            db.session.commit()
+
+            existing_names_after = {m.name for m in MenuItem.query.all()}
+            items_to_add = [
+                MenuItem(
+                    name=name,
+                    category=cat,
+                    price=price,
+                    description=desc,
+                    image_url='',
+                    is_available=True
+                )
+                for name, cat, price, desc in REAL_MOONFLOWER_MENU
+                if name not in existing_names_after
+            ]
+            if items_to_add:
                 db.session.bulk_save_objects(items_to_add)
 
         db.session.commit()
