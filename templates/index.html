@@ -24,9 +24,9 @@
             </a>
 
             <div class="nav-actions">
-                <button type="button" onclick="openFoodCartModal()" class="btn btn-accent btn-sm" id="navFoodCartBtn">
-                    <i class="fa-solid fa-cart-shopping"></i>
-                    <span>Food Cart (<span id="navCartCountBadge">0</span>)</span>
+                <button type="button" onclick="openFoodCartModal()" class="btn btn-accent btn-sm" id="navFoodCartBtn" aria-label="Food Cart" title="Open Food Cart" style="position: relative; width: 40px; height: 38px; padding: 0; border-radius: 10px;">
+                    <i class="fa-solid fa-cart-shopping" style="font-size: 1rem;"></i>
+                    <span id="navCartCountBadge" style="position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: var(--brand-primary); color: #fff; font-size: 0.68rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff;">0</span>
                 </button>
                 <button type="button" onclick="switchTab('lookup')" class="btn btn-outline btn-sm" id="navTrackBookingBtn">
                     <i class="fa-solid fa-magnifying-glass"></i>
@@ -220,32 +220,12 @@
 
             <div id="foodMenuGrid" class="cards-grid-3"></div>
 
-            <!-- Floating / Bottom Food Cart Bar -->
-            <div id="foodCartBar" class="search-bar-card hidden" style="position: sticky; bottom: 1rem; z-index: 30; margin-top: 2rem; background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); box-shadow: var(--shadow-lg);">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                    <div style="flex: 1; min-width: 240px;">
-                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: hsl(38, 75%, 76%); font-weight: 700;">
-                            <i class="fa-solid fa-cart-shopping"></i> Food Cart (<span id="cartBarItemCount">0</span>)
-                        </div>
-                        <div id="cartBarSummaryText" style="font-size: 0.96rem; font-weight: 600; margin-top: 0.25rem;"></div>
-                        <div id="cartBarChairsText" style="font-size: 0.8rem; color: rgba(255,255,255,0.85); margin-top: 0.2rem;"></div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
-                        <div style="text-align: right; margin-right: 0.4rem;">
-                            <span style="font-size: 0.74rem; color: rgba(255,255,255,0.8); display: block;">Total Food Bill</span>
-                            <strong id="cartBarTotalAmount" style="font-size: 1.45rem; color: hsl(38, 85%, 78%);">₱0.00</strong>
-                        </div>
-                        <button type="button" onclick="openFoodCartModal()" class="btn btn-outline btn-sm" style="background: rgba(255,255,255,0.14); color: #fff; border-color: rgba(255,255,255,0.32);">
-                            <i class="fa-solid fa-basket-shopping"></i>
-                            <span>View Cart</span>
-                        </button>
-                        <button type="button" onclick="openFoodCheckoutModal()" class="btn btn-accent">
-                            <i class="fa-solid fa-bag-shopping"></i>
-                            <span>Checkout Tanan</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <!-- Compact Floating Cart Icon Button (Never blocks menu cards on mobile) -->
+            <button type="button" id="floatingCartBtn" onclick="openFoodCartModal()" class="hidden" aria-label="Open Food Cart" title="Open Food Cart"
+                style="position: fixed; bottom: 1.35rem; right: 1.35rem; z-index: 45; width: 60px; height: 60px; border-radius: 999px; background: var(--brand-primary); color: #fff; border: 2px solid #fff; box-shadow: var(--shadow-lg); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 180ms ease;">
+                <i class="fa-solid fa-cart-shopping" style="font-size: 1.35rem;"></i>
+                <span id="floatingCartCountBadge" style="position: absolute; top: -4px; right: -4px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px; background: var(--brand-accent); color: #fff; font-size: 0.78rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: var(--shadow-sm);">0</span>
+            </button>
         </section>
 
         <!-- TAB 3: TRACK MY BOOKING -->
@@ -784,36 +764,27 @@
         }
 
         function updateFoodCartUI() {
-            let totalDishes = 0;
             let totalQty = 0;
             let totalPrice = 0;
-            const summaryNames = [];
 
             foodMenuData.forEach(item => {
                 const qty = foodCart[item.id] || 0;
                 if (qty > 0) {
-                    totalDishes += 1;
                     totalQty += qty;
                     totalPrice += qty * item.price;
-                    summaryNames.push(`${qty}x ${item.name}`);
                 }
             });
 
             document.getElementById('topCartCount').innerText = totalQty;
             document.getElementById('navCartCountBadge').innerText = totalQty;
+            document.getElementById('floatingCartCountBadge').innerText = totalQty;
             document.getElementById('topCartTotal').innerText = totalPrice.toLocaleString();
-            document.getElementById('cartBarItemCount').innerText = `${totalDishes} Dishes / ${totalQty} Orders`;
 
-            const cartBar = document.getElementById('foodCartBar');
-            const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
-
+            const floatBtn = document.getElementById('floatingCartBtn');
             if (totalQty > 0) {
-                cartBar.classList.remove('hidden');
-                document.getElementById('cartBarSummaryText').innerText = summaryNames.join(', ');
-                document.getElementById('cartBarChairsText').innerHTML = `<i class="fa-solid fa-chair"></i> Para sa <strong>${pax} kabuok (Pax)</strong> &rarr; Ang Moonflower Staff mag-reserve og <strong>1 Table + ${pax} Chairs</strong>`;
-                document.getElementById('cartBarTotalAmount').innerText = `₱${totalPrice.toLocaleString()}`;
+                floatBtn.classList.remove('hidden');
             } else {
-                cartBar.classList.add('hidden');
+                floatBtn.classList.add('hidden');
             }
         }
 
