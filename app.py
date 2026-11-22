@@ -12,10 +12,28 @@ from sqlalchemy import inspect, text, or_
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'moonflower-secret-key-2026')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///moonflower_booking.db')
-if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
-    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
+_raw_db_url = (os.environ.get('DATABASE_URL') or '').strip()
+if not _raw_db_url:
+    _db_url = 'sqlite:///moonflower_booking.db'
+elif _raw_db_url.startswith('postgres://'):
+    _db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
+else:
+    _db_url = _raw_db_url
+
+_IS_POSTGRES = _db_url.startswith('postgresql://')
+if _IS_POSTGRES and 'sslmode=' not in _db_url and 'localhost' not in _db_url and '127.0.0.1' not in _db_url:
+    _sep = '&' if '?' in _db_url else '?'
+    _db_url = f"{_db_url}{_sep}sslmode=require"
+
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+if _IS_POSTGRES:
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'pool_recycle': 280,
+        'pool_size': 5,
+        'max_overflow': 5,
+    }
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
@@ -430,16 +448,28 @@ def health_check():
         return Response(status=200, headers={'Cache-Control': 'no-store, no-cache'})
     with _LAST_MONITOR_LOCK:
         last_hit = dict(_LAST_MONITOR_HIT)
-    resp = jsonify({
+    payload = {
         'status': 'ok',
         'service': 'moonflower-booking-system',
+        'database': 'PostgreSQL' if _IS_POSTGRES else 'SQLite (Local)',
         'ph_time': now_ph_str(),
         'booted_at_ph': _BOOT_TIME_PH,
         'uptime_seconds': int(time.monotonic() - _BOOT_MONOTONIC),
         'last_external_ping': last_hit
-    })
+    }
+    status_code = 200
+    if request.args.get('check_db') == '1':
+        try:
+            db.session.execute(text('SELECT 1'))
+            payload['db_connected'] = True
+        except Exception as exc:
+            payload['db_connected'] = False
+            payload['status'] = 'degraded'
+            payload['db_error'] = str(exc)[:180]
+            status_code = 500
+    resp = jsonify(payload)
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    return resp, 200
+    return resp, status_code
 
 
 # ==========================================
@@ -999,7 +1029,8 @@ def build_dashboard_context():
             f"{_LAST_MONITOR_HIT['time_ph']} ({_LAST_MONITOR_HIT['method']} {_LAST_MONITOR_HIT['path']} — {_LAST_MONITOR_HIT['user_agent']})"
             if _LAST_MONITOR_HIT.get('time_ph')
             else 'None received yet since last boot'
-        )
+        ),
+        'db_backend': 'PostgreSQL (Persistent)' if _IS_POSTGRES else 'SQLite (Local / Resets on Sleep)'
     }
 
     return {

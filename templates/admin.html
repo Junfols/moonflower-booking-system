@@ -691,6 +691,7 @@
                         </button>
                     </div>
                     <div style="font-size: 0.76rem; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 1rem;">
+                        <span><strong>Database:</strong> {{ stats.db_backend }}</span>
                         <span><strong>Last Boot (PH):</strong> {{ stats.booted_at_ph }} ({{ stats.uptime_human }})</span>
                         <span><strong>Last Monitor Ping:</strong> {{ stats.last_ping_summary }}</span>
                     </div>
