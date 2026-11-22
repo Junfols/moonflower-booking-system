@@ -3,7 +3,7 @@ import csv
 import io
 import json
 from datetime import datetime, date, timezone, timedelta
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text, or_
 
@@ -116,7 +116,7 @@ class FoodBooking(db.Model):
 
 DEFAULT_SITE_SETTINGS = {
     'hero_title': 'Moonflower Resort & Fine Dining',
-    'hero_subtitle': 'Masinati ang kalinaw, komportable nga mga kwarto, ug lamiang pagkaon sa among resort.',
+    'hero_subtitle': 'Experience coastal serenity, comfortable suites, and freshly prepared signature dishes.',
     'hero_image': '',
     'dining_image': '',
     'contact_phone': '0917-123-4567',
@@ -196,7 +196,7 @@ def seed_data_if_empty():
                     room_type='Standard Garden View',
                     capacity=2,
                     price_per_night=1500.0,
-                    description='Air-conditioned room nga nag-atubang sa lush tropical garden, private bath, hot shower, ug free Wi-Fi.',
+                    description='Air-conditioned room facing our lush tropical garden with private bath, hot shower, and free Wi-Fi.',
                     image_url=''
                 ),
                 Room(
@@ -204,7 +204,7 @@ def seed_data_if_empty():
                     room_type='Deluxe Sea View',
                     capacity=2,
                     price_per_night=2500.0,
-                    description='Komportable nga suite nga adunay pribadong balkonahe nga nag-atubang sa dagat, king bed, ug minibar.',
+                    description='Comfortable suite with a private ocean-view balcony, plush king bed, and complimentary breakfast.',
                     image_url=''
                 ),
                 Room(
@@ -212,7 +212,7 @@ def seed_data_if_empty():
                     room_type='Moonflower Family Villa',
                     capacity=5,
                     price_per_night=4500.0,
-                    description='Dako nga family villa nga adunay sala, dining area, pribadong veranda, ug kompleto nga amenities.',
+                    description='Spacious family villa featuring a living lounge, dining area, private veranda, and full resort amenities.',
                     image_url=''
                 ),
             ]
@@ -224,7 +224,7 @@ def seed_data_if_empty():
                     name='Crispy Pata Family Size',
                     category='Main Course',
                     price=680.0,
-                    description='Kagumkom nga deep-fried pork knuckle uban ang espesyal nga Moonflower soy-vinegar dip.',
+                    description='Golden deep-fried crispy pork knuckle served with Moonflower signature soy-vinegar dipping sauce.',
                     image_url='',
                     is_available=True
                 ),
@@ -232,7 +232,7 @@ def seed_data_if_empty():
                     name='Garlic Buttered Prawns',
                     category='Seafood & Grill',
                     price=420.0,
-                    description='Presko nga lukon nga giluto sa butter, ahos, ug sweet chili glaze.',
+                    description='Fresh tiger prawns sauteed in roasted garlic butter and sweet chili herb glaze.',
                     image_url='',
                     is_available=True
                 ),
@@ -240,15 +240,15 @@ def seed_data_if_empty():
                     name='Grilled Tuna Belly (Sinugba)',
                     category='Seafood & Grill',
                     price=390.0,
-                    description='Charcoal-grilled yellowfin tuna belly nga adunay toyomansi ug ensaladang talong.',
+                    description='Charcoal-grilled yellowfin tuna belly served with calamansi soy dip and smoked eggplant salad.',
                     image_url='',
                     is_available=True
                 ),
                 MenuItem(
-                    name='Sinigang na Baboy sa Sampalok',
+                    name='Pork Sinigang in Tamarind Broth',
                     category='Main Course',
                     price=360.0,
-                    description='Mainit ug aslom-lami nga sabaw sa baboy nga adunay preskong utanon.',
+                    description='Rich and savory tamarind pork soup simmered with fresh local vegetables.',
                     image_url='',
                     is_available=True
                 ),
@@ -256,15 +256,15 @@ def seed_data_if_empty():
                     name='Moonflower Seafood Pancit Canton',
                     category='Noodles & Platter',
                     price=290.0,
-                    description='Stir-fried egg noodles nga puno sa hipon, squid balls, karne, ug preskong utanon.',
+                    description='Wok-tossed egg noodles loaded with shrimp, squid, tender pork strips, and crisp vegetables.',
                     image_url='',
                     is_available=True
                 ),
                 MenuItem(
-                    name='Native Chicken Tinola / Halang-Halang',
+                    name='Native Chicken Tinola',
                     category='Main Course',
                     price=350.0,
-                    description='Bisaya nga manok nga giluto sa luy-a, tanglad, ug sili.',
+                    description='Aromatic ginger and lemongrass native chicken soup with papaya and chili leaves.',
                     image_url='',
                     is_available=True
                 ),
@@ -272,7 +272,7 @@ def seed_data_if_empty():
                     name='Garlic Rice Platter (Good for 4-5)',
                     category='Rice & Sides',
                     price=150.0,
-                    description='Humot nga sinangag nga kan-on nga adunay toasted garlic.',
+                    description='Generous sharing platter of fragrant steamed rice tossed with crispy toasted garlic.',
                     image_url='',
                     is_available=True
                 ),
@@ -280,7 +280,7 @@ def seed_data_if_empty():
                     name='Fresh Mango Shake / Buko Pandan Pitcher',
                     category='Drinks & Desserts',
                     price=180.0,
-                    description='Bugnaw ug presko nga ilimnon o dessert para sa pamilya ug barkada.',
+                    description='Chilled tropical pitcher ideal for families and dining groups.',
                     image_url='',
                     is_available=True
                 ),
@@ -288,6 +288,24 @@ def seed_data_if_empty():
             db.session.bulk_save_objects(foods)
 
         db.session.commit()
+
+
+# ==========================================
+# PWA ROOT ROUTES (Manifest & Service Worker)
+# ==========================================
+@app.route('/manifest.json')
+def pwa_manifest():
+    response = send_from_directory(os.path.join(app.root_path, 'static'), 'manifest.json')
+    response.headers['Content-Type'] = 'application/manifest+json'
+    return response
+
+
+@app.route('/sw.js')
+def pwa_service_worker():
+    response = send_from_directory(os.path.join(app.root_path, 'static'), 'sw.js')
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
 
 
 # ==========================================
@@ -345,16 +363,16 @@ def get_available_rooms():
     guests = int(request.args.get('guests', 1) or 1)
 
     if not check_in_str or not check_out_str:
-        return jsonify({'error': 'Palihog butangi og check-in ug check-out dates'}), 400
+        return jsonify({'error': 'Please provide both check-in and check-out dates.'}), 400
 
     try:
         check_in = datetime.strptime(check_in_str, '%Y-%m-%d').date()
         check_out = datetime.strptime(check_out_str, '%Y-%m-%d').date()
     except ValueError:
-        return jsonify({'error': 'Invalid nga format sa petsa.'}), 400
+        return jsonify({'error': 'Invalid date format.'}), 400
 
     if check_out <= check_in:
-        return jsonify({'error': 'Ang check-out kinahanglan mas ulahi sa check-in'}), 400
+        return jsonify({'error': 'Check-out date must be after check-in date.'}), 400
 
     booked_room_ids = db.select(RoomBooking.room_id).filter(
         RoomBooking.status.in_(['pending', 'confirmed']),
@@ -394,13 +412,13 @@ def book_room():
     check_out_str = payload.get('check_out')
 
     if not room_id or not name or not phone or not check_in_str or not check_out_str:
-        return jsonify({'error': 'Palihog kompletoha ang tanang gikinahanglan nga impormasyon.'}), 400
+        return jsonify({'error': 'Please complete all required guest and date details.'}), 400
 
     check_in = datetime.strptime(check_in_str, '%Y-%m-%d').date()
     check_out = datetime.strptime(check_out_str, '%Y-%m-%d').date()
 
     if check_out <= check_in:
-        return jsonify({'error': 'Ang check-out kinahanglan mas ulahi sa check-in.'}), 400
+        return jsonify({'error': 'Check-out date must be after check-in date.'}), 400
 
     conflict = RoomBooking.query.filter(
         RoomBooking.room_id == room_id,
@@ -410,11 +428,11 @@ def book_room():
     ).first()
 
     if conflict:
-        return jsonify({'error': 'Pasayloa, na-book na kini nga kwarto sa maong mga petsa.'}), 409
+        return jsonify({'error': 'Sorry, this room is already booked for the selected dates.'}), 409
 
     room = db.session.get(Room, room_id)
     if not room:
-        return jsonify({'error': 'Wala makit-i ang kwarto.'}), 404
+        return jsonify({'error': 'Room not found.'}), 404
 
     nights = (check_out - check_in).days
     total_price = nights * room.price_per_night
@@ -474,7 +492,7 @@ def book_food():
     name = (payload.get('name') or '').strip()
     phone = (payload.get('phone') or '').strip()
     date_str = payload.get('date')
-    arrival_time = (payload.get('arrival_time') or '12:00 PM (Lunch)').strip()
+    arrival_time = (payload.get('arrival_time') or '12:30 PM (Lunch)').strip()
     pax = int(payload.get('pax') or 1)
     items = payload.get('items') or []
     notes = (payload.get('notes') or '').strip()
@@ -482,7 +500,7 @@ def book_food():
     payment_ref = (payload.get('payment_ref') or '').strip()
 
     if not name or not phone or not date_str or not items:
-        return jsonify({'error': 'Palihog pilia ang imong pagkaon sa menu ug kompletoha ang imong ngalan ug kontak.'}), 400
+        return jsonify({'error': 'Please select food items from the menu and enter your name and phone number.'}), 400
 
     b_date = datetime.strptime(date_str, '%Y-%m-%d').date()
 
@@ -510,7 +528,7 @@ def book_food():
         summary_parts.append(f"{qty}x {menu_item.name}")
 
     if not order_details:
-        return jsonify({'error': 'Palihog pagpili og bisan usa ka pagkaon sa menu.'}), 400
+        return jsonify({'error': 'Please select at least one food item from the menu.'}), 400
 
     order_summary_str = ", ".join(summary_parts)
     seating_instruction = f"1 Table + {pax} Chair{'s' if pax > 1 else ''} (Pending Staff Assignment)"
@@ -544,7 +562,7 @@ def book_food():
         name,
         'NEW_FOOD_BOOKING',
         ref_code,
-        f"Food Booking ({order_summary_str}) for {pax} Pax (Staff to reserve Table + {pax} Chairs) on {date_str} ({arrival_time}) — Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}"
+        f"Food Booking ({order_summary_str}) for {pax} Guests (Staff to reserve Table + {pax} Chairs) on {date_str} ({arrival_time}) — Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}"
     )
 
     return jsonify({
@@ -571,7 +589,7 @@ def lookup_bookings():
     """Allows customers to check their Room or Food booking, payment verification, and reserved table/chairs."""
     q = (request.args.get('q') or '').strip()
     if not q:
-        return jsonify({'error': 'Palihog isulod ang imong Reference ID, Phone Number, o Ngalan.'}), 400
+        return jsonify({'error': 'Please enter your Reference Code, Phone Number, or Full Name.'}), 400
 
     q_upper = q.upper()
     is_room_ref = q_upper.startswith('MF-RM-')
@@ -645,7 +663,7 @@ def lookup_bookings():
                 'customer_name': fb.customer_name,
                 'customer_phone': fb.customer_phone,
                 'title': f"Food Order: {fb.order_summary}",
-                'subtitle': f"Petsa: {fb.booking_date} | Oras: {fb.arrival_time} | {fb.pax} Pax",
+                'subtitle': f"Date: {fb.booking_date} | Arrival: {fb.arrival_time} | {fb.pax} Guests",
                 'seating_info': fb.assigned_table or f"1 Table + {fb.pax} Chairs",
                 'amount': f"₱{fb.total_price:,.2f}",
                 'payment_status': (fb.payment_status or 'unpaid').upper(),
@@ -837,7 +855,7 @@ def cashier_portal():
             session['staff_role'] = 'CASHIER'
             record_audit('CASHIER', staff_name, 'STAFF_LOGIN', '', f"Cashier {staff_name} logged into Receiver Terminal.")
             return redirect(url_for('cashier_portal'))
-        return render_template('cashier.html', error="Sayop nga Cashier Password!", authed=False)
+        return render_template('cashier.html', error="Incorrect Cashier Password. Please try again.", authed=False)
 
     if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
         return render_template('cashier.html', authed=False)
@@ -927,7 +945,7 @@ def owner_portal():
             session['staff_name'] = 'Overseas Owner'
             record_audit('OWNER', 'Overseas Owner', 'OWNER_LOGIN', '', 'Owner logged into Remote Executive Monitor.')
             return redirect(url_for('admin', view='monitor'))
-        return render_template('admin.html', error="Sayop nga Owner/Admin Password!", authed=False, login_mode='owner')
+        return render_template('admin.html', error="Incorrect Owner or Admin Password.", authed=False, login_mode='owner')
 
     if not (session.get('is_owner') or session.get('is_admin')):
         return render_template('admin.html', authed=False, login_mode='owner')
@@ -952,7 +970,7 @@ def admin():
             session['staff_name'] = 'Overseas Owner' if role_select == 'owner' else 'System Admin'
             record_audit('ADMIN', session['staff_name'], 'ADMIN_LOGIN', '', f"{session['staff_name']} logged into Admin Portal.")
             return redirect(url_for('admin'))
-        return render_template('admin.html', error="Sayop nga Password!", authed=False)
+        return render_template('admin.html', error="Incorrect password. Please try again.", authed=False)
 
     if not session.get('is_admin'):
         return render_template('admin.html', authed=False)
@@ -1036,7 +1054,7 @@ def save_room():
     image_url = (payload.get('image_url') or '').strip()
 
     if not room_number or not room_type:
-        return jsonify({'error': 'Room number ug Room type gikinahanglan.'}), 400
+        return jsonify({'error': 'Room number and room type are required.'}), 400
 
     actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
     actor_name = session.get('staff_name', actor_role)
@@ -1044,7 +1062,7 @@ def save_room():
     if room_id:
         room = db.session.get(Room, int(room_id))
         if not room:
-            return jsonify({'error': 'Room not found'}), 404
+            return jsonify({'error': 'Room not found.'}), 404
         room.room_number = room_number
         room.room_type = room_type
         room.capacity = capacity
@@ -1055,7 +1073,7 @@ def save_room():
     else:
         existing = Room.query.filter_by(room_number=room_number).first()
         if existing:
-            return jsonify({'error': f'Ang Room {room_number} naa na daan.'}), 409
+            return jsonify({'error': f'Room {room_number} already exists.'}), 409
         room = Room(
             room_number=room_number,
             room_type=room_type,
@@ -1100,7 +1118,7 @@ def save_menu_item():
     image_url = (payload.get('image_url') or '').strip()
 
     if not name:
-        return jsonify({'error': 'Food name gikinahanglan.'}), 400
+        return jsonify({'error': 'Food item name is required.'}), 400
 
     actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
     actor_name = session.get('staff_name', actor_role)
@@ -1108,7 +1126,7 @@ def save_menu_item():
     if item_id:
         food = db.session.get(MenuItem, int(item_id))
         if not food:
-            return jsonify({'error': 'Food item not found'}), 404
+            return jsonify({'error': 'Food item not found.'}), 404
         food.name = name
         food.category = category
         food.price = price
@@ -1200,7 +1218,7 @@ def export_csv(export_type):
             writer.writerow([l.id, l.timestamp_ph, l.actor_role, l.actor_name, l.action_type, l.reference_code, l.details])
         filename = f"moonflower_owner_audit_log_{date.today()}.csv"
     else:
-        writer.writerow(['Ref Code', 'ID', 'Customer Name', 'Phone', 'Booking Date', 'Arrival Time', 'Pax (Chairs)', 'Reserved Table & Chairs', 'Food Order Summary', 'Total Bill (PHP)', 'Payment Status', 'Payment Method', 'Amount Paid (PHP)', 'GCash/Payment Ref', 'Handled By', 'Updated (PH Time)', 'Status', 'Notes'])
+        writer.writerow(['Ref Code', 'ID', 'Customer Name', 'Phone', 'Booking Date', 'Arrival Time', 'Guests (Chairs)', 'Reserved Table & Chairs', 'Food Order Summary', 'Total Bill (PHP)', 'Payment Status', 'Payment Method', 'Amount Paid (PHP)', 'GCash/Payment Ref', 'Handled By', 'Updated (PH Time)', 'Status', 'Notes'])
         records = FoodBooking.query.order_by(FoodBooking.id.desc()).all()
         for fb in records:
             writer.writerow([f"MF-FD-{fb.id:04d}", fb.id, fb.customer_name, fb.customer_phone, fb.booking_date, fb.arrival_time, fb.pax, fb.assigned_table or '', fb.order_summary, f"{fb.total_price:.2f}", (fb.payment_status or 'unpaid').upper(), fb.payment_method or '', f"{float(fb.amount_paid or 0):.2f}", fb.payment_ref or '', fb.handled_by or '', fb.updated_at_ph or '', fb.status.upper(), fb.notes or ''])

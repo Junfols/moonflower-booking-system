@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moonflower Owner Monitor &amp; Admin Portal</title>
     <meta name="description" content="Overseas Owner Remote Monitor and System Administration Dashboard for Moonflower Resort & Fine Dining.">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#143D30">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -33,23 +39,23 @@
                 <div class="form-group">
                     <label for="roleSelectInput" class="form-label">Select Access Role</label>
                     <select id="roleSelectInput" name="role_select" class="form-select">
-                        <option value="owner" {% if login_mode == 'owner' %}selected{% endif %}>🌍 Overseas Owner (Remote Live Monitor &amp; Full Control)</option>
-                        <option value="admin" {% if login_mode != 'owner' %}selected{% endif %}>🛡️ System Admin (Rooms, Food Menu &amp; Bookings)</option>
+                        <option value="owner" {% if login_mode == 'owner' %}selected{% endif %}>Overseas Owner (Remote Live Monitor &amp; Full Control)</option>
+                        <option value="admin" {% if login_mode != 'owner' %}selected{% endif %}>System Admin (Rooms, Food Menu &amp; Bookings)</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="adminPasswordInput" class="form-label">Owner / Admin Password</label>
-                    <input type="password" id="adminPasswordInput" name="password" required placeholder="Owner: owner123 | Admin: admin123" class="form-input">
+                    <input type="password" id="adminPasswordInput" name="password" required placeholder="Enter password" class="form-input">
                 </div>
                 <button type="submit" id="adminLoginBtn" class="btn btn-primary" style="width: 100%; padding: 0.85rem;">
                     <i class="fa-solid fa-right-to-bracket"></i>
-                    <span>Sulod sa Owner &amp; Admin Portal</span>
+                    <span>Sign In to Owner &amp; Admin Portal</span>
                 </button>
             </form>
 
             <div style="margin-top: 1.25rem; text-align: center; display: flex; justify-content: space-between; font-size: 0.8rem;">
-                <a href="/" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">&larr; Customer Page</a>
-                <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Receiver &rarr;</a>
+                <a href="/" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">&larr; Customer Portal</a>
+                <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Terminal &rarr;</a>
             </div>
         </div>
     </main>
@@ -71,7 +77,7 @@
                         <span class="status-badge status-completed" style="font-size: 0.65rem;">SYSTEM ADMIN</span>
                         {% endif %}
                     </div>
-                    <span class="brand-subtitle">🇵🇭 PH Time: <strong id="ownerPhTime">{{ stats.ph_time_now }}</strong> &bull; Live Sync Active</span>
+                    <span class="brand-subtitle">Philippine Time: <strong id="ownerPhTime">{{ stats.ph_time_now }}</strong> &bull; Live Sync Active</span>
                 </div>
             </div>
 
@@ -109,9 +115,9 @@
 
             <div class="kpi-card">
                 <div>
-                    <div class="kpi-label">Actual Cash Collected</div>
+                    <div class="kpi-label">Cash Collected</div>
                     <div class="kpi-value" style="color: var(--status-confirmed-text);">₱{{ stats.cash_collected }}</div>
-                    <div class="kpi-sub">On-hand frontdesk cash (PH)</div>
+                    <div class="kpi-sub">Front desk cash on hand (PH)</div>
                 </div>
                 <div class="kpi-icon" style="background: var(--brand-primary-light); color: var(--brand-primary);">
                     <i class="fa-solid fa-money-bill-trend-up"></i>
@@ -131,7 +137,7 @@
 
             <div class="kpi-card">
                 <div>
-                    <div class="kpi-label">Pending Customer Requests</div>
+                    <div class="kpi-label">Pending Requests</div>
                     <div class="kpi-value" style="color: var(--status-pending-text);">{{ stats.pending_count }}</div>
                     <div class="kpi-sub">{{ stats.room_bookings_total }} Rooms &bull; {{ stats.food_bookings_total }} Food Orders</div>
                 </div>
@@ -146,7 +152,7 @@
             <nav class="mode-tabs" aria-label="Owner & Admin Views">
                 <button type="button" id="adminTabMonitorBtn" onclick="switchAdminTab('monitor')" class="mode-tab-btn">
                     <i class="fa-solid fa-satellite-dish"></i>
-                    <span>Overseas Owner Monitor &amp; Audit Log</span>
+                    <span>Owner Monitor &amp; Audit Log</span>
                 </button>
                 <button type="button" id="adminTabBookingsBtn" onclick="switchAdminTab('bookings')" class="mode-tab-btn">
                     <i class="fa-solid fa-calendar-check"></i>
@@ -154,7 +160,7 @@
                 </button>
                 <button type="button" id="adminTabInventoryBtn" onclick="switchAdminTab('inventory')" class="mode-tab-btn">
                     <i class="fa-solid fa-images"></i>
-                    <span>Rooms, Food Menu &amp; Pictures</span>
+                    <span>Rooms, Food Menu &amp; Photos</span>
                 </button>
                 <button type="button" id="adminTabSettingsBtn" onclick="switchAdminTab('settings')" class="mode-tab-btn">
                     <i class="fa-solid fa-sliders"></i>
@@ -169,11 +175,11 @@
                 <div class="panel-header">
                     <div>
                         <div style="display: flex; align-items: center; gap: 0.6rem;">
-                            <span style="width: 10px; height: 10px; border-radius: 50%; background: hsl(152, 65%, 40%); display: inline-block;"></span>
-                            <h2 class="font-display" style="font-size: 1.55rem; font-weight: 700;">Overseas Owner Real-Time Activity &amp; Cashier Audit Trail</h2>
+                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #1E9E5E; display: inline-block;"></span>
+                            <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Real-Time Activity &amp; Cashier Audit Trail</h2>
                         </div>
                         <p style="font-size: 0.82rem; color: var(--text-secondary);">
-                            Bisan tua ka sa gawas sa Pilipinas, makita nimo diri sa <strong>Philippine Time (UTC+8)</strong> kung kinsa nga Cashier ang nag-confirm sa Room o Food booking, pila ang gibayad sa GCash/Cash, ug unsa nga Table + Chairs ang gi-reserve.
+                            Monitor every customer booking, GCash/cash payment verification, table &amp; chair assignment, and staff action in <strong>Philippine Time (UTC+8)</strong>.
                         </p>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
@@ -183,7 +189,7 @@
                         </button>
                         <a href="/admin/export/audit" class="btn btn-primary btn-sm">
                             <i class="fa-solid fa-file-csv"></i>
-                            <span>Download Audit Log CSV</span>
+                            <span>Export Audit CSV</span>
                         </a>
                     </div>
                 </div>
@@ -194,10 +200,10 @@
                             <tr>
                                 <th>Philippine Time (UTC+8)</th>
                                 <th>Role</th>
-                                <th>Staff / Actor Name</th>
+                                <th>Staff / Actor</th>
                                 <th>Action</th>
                                 <th>Reference</th>
-                                <th>Complete Transaction Details</th>
+                                <th>Transaction Details</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -217,7 +223,7 @@
                             {% else %}
                             <tr>
                                 <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-                                    Wala pay naka-record nga staff activity log sa pagkakaron.
+                                    No staff activity recorded yet.
                                 </td>
                             </tr>
                             {% endfor %}
@@ -235,12 +241,12 @@
                 <div class="panel-header">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <i class="fa-solid fa-utensils" style="color: var(--brand-accent); font-size: 1.15rem;"></i>
-                        <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Food Menu Bookings &amp; Table/Chairs Setup</h2>
+                        <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Food Menu Bookings &amp; Seating</h2>
                         <span class="status-badge status-pending">{{ food_bookings|length }} Total</span>
                     </div>
                     <a href="/admin/export/food" class="btn btn-outline btn-sm">
                         <i class="fa-solid fa-file-csv"></i>
-                        <span>Export Food Bookings CSV</span>
+                        <span>Export Food CSV</span>
                     </a>
                 </div>
 
@@ -252,7 +258,7 @@
                         <button type="button" class="filter-pill" onclick="filterTable('foodBookingsTable', 'completed', this)">Completed</button>
                         <button type="button" class="filter-pill" onclick="filterTable('foodBookingsTable', 'cancelled', this)">Cancelled</button>
                     </div>
-                    <input type="search" placeholder="Search customer, food, phone, table..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('foodBookingsTable', this.value)">
+                    <input type="search" placeholder="Search guest, dish, phone, table..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('foodBookingsTable', this.value)">
                 </div>
 
                 <div class="table-responsive">
@@ -260,11 +266,11 @@
                         <thead>
                             <tr>
                                 <th>Ref / PH Time</th>
-                                <th>Customer &amp; Schedule</th>
-                                <th>Ordered Food Menu</th>
-                                <th>Pax &rarr; Table &amp; Chairs</th>
+                                <th>Guest &amp; Schedule</th>
+                                <th>Ordered Dishes</th>
+                                <th>Guests &rarr; Table &amp; Chairs</th>
                                 <th>Total Bill</th>
-                                <th>GCash / Payment</th>
+                                <th>Payment</th>
                                 <th>Status &amp; Handled By</th>
                                 <th>Actions</th>
                             </tr>
@@ -290,7 +296,7 @@
                                     <strong style="font-size: 0.82rem;">{{ fb.order_summary }}</strong>
                                 </td>
                                 <td>
-                                    <span class="status-badge status-pending">{{ fb.pax }} Pax</span>
+                                    <span class="status-badge status-pending">{{ fb.pax }} Guests</span>
                                     <div style="font-size: 0.76rem; font-weight: 700; color: var(--brand-primary); margin-top: 3px;">
                                         <i class="fa-solid fa-chair"></i> {{ fb.assigned_table }}
                                     </div>
@@ -314,11 +320,11 @@
                                         <button type="button" class="btn btn-accent btn-sm"
                                             data-booking='{{ fb | tojson }}'
                                             onclick="openProcessModal('food', this)">
-                                            <i class="fa-solid fa-chair"></i> Table / GCash
+                                            <i class="fa-solid fa-chair"></i> Table / Payment
                                         </button>
                                         <a href="/admin/action/food/{{ fb.id }}/confirmed" class="btn btn-success btn-sm">Confirm</a>
                                         <a href="/admin/action/food/{{ fb.id }}/cancelled" class="btn btn-danger btn-sm">Cancel</a>
-                                        <a href="/admin/action/food/{{ fb.id }}/delete" class="btn btn-outline btn-sm" onclick="return confirm('Sigurado ka nga papason kini nga food booking?')">
+                                        <a href="/admin/action/food/{{ fb.id }}/delete" class="btn btn-outline btn-sm" onclick="return confirm('Delete this food booking record?')">
                                             <i class="fa-regular fa-trash-can"></i>
                                         </a>
                                     </div>
@@ -327,7 +333,7 @@
                             {% else %}
                             <tr>
                                 <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-                                    Walay food bookings sa pagkakaron.
+                                    No food bookings yet.
                                 </td>
                             </tr>
                             {% endfor %}
@@ -341,7 +347,7 @@
                 <div class="panel-header">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <i class="fa-solid fa-bed" style="color: var(--brand-primary); font-size: 1.15rem;"></i>
-                        <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Room Bookings &amp; Payment Collection</h2>
+                        <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Room Bookings &amp; Payments</h2>
                         <span class="status-badge status-confirmed">{{ room_bookings|length }} Total</span>
                     </div>
                     <a href="/admin/export/rooms" class="btn btn-outline btn-sm">
@@ -358,7 +364,7 @@
                         <button type="button" class="filter-pill" onclick="filterTable('roomBookingsTable', 'completed', this)">Completed</button>
                         <button type="button" class="filter-pill" onclick="filterTable('roomBookingsTable', 'cancelled', this)">Cancelled</button>
                     </div>
-                    <input type="search" placeholder="Search guest, phone, room, ref, cashier..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('roomBookingsTable', this.value)">
+                    <input type="search" placeholder="Search guest, phone, room, ref..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('roomBookingsTable', this.value)">
                 </div>
 
                 <div class="table-responsive">
@@ -366,10 +372,10 @@
                         <thead>
                             <tr>
                                 <th>Ref / PH Time</th>
-                                <th>Customer</th>
+                                <th>Guest</th>
                                 <th>Room &amp; Dates</th>
                                 <th>Total Bill</th>
-                                <th>Payment &amp; Method</th>
+                                <th>Payment</th>
                                 <th>Status &amp; Handled By</th>
                                 <th>Actions</th>
                             </tr>
@@ -417,7 +423,7 @@
                                         </button>
                                         <a href="/admin/action/room/{{ b.id }}/confirmed" class="btn btn-success btn-sm">Confirm</a>
                                         <a href="/admin/action/room/{{ b.id }}/cancelled" class="btn btn-danger btn-sm">Cancel</a>
-                                        <a href="/admin/action/room/{{ b.id }}/delete" class="btn btn-outline btn-sm" title="Owner/Admin Delete" onclick="return confirm('Sigurado ka nga papason kini nga booking?')">
+                                        <a href="/admin/action/room/{{ b.id }}/delete" class="btn btn-outline btn-sm" title="Owner/Admin Delete" onclick="return confirm('Delete this room booking record?')">
                                             <i class="fa-regular fa-trash-can"></i>
                                         </a>
                                     </div>
@@ -426,7 +432,7 @@
                             {% else %}
                             <tr>
                                 <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-                                    Walay bookings sa kwarto sa pagkakaron.
+                                    No room bookings yet.
                                 </td>
                             </tr>
                             {% endfor %}
@@ -436,19 +442,19 @@
             </section>
         </div>
 
-        <!-- TAB 3: ROOMS, FOOD MENU & CHANGEABLE PICTURES -->
+        <!-- TAB 3: ROOMS, FOOD MENU & CHANGEABLE PHOTOS -->
         <div id="adminSectionInventory" class="hidden">
 
             <!-- MANAGE FOOD MENU & FOOD PHOTOS -->
             <section class="panel-card">
                 <div class="panel-header">
                     <div>
-                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Moonflower Food Menu (Changeable Pictures &amp; Prices)</h2>
-                        <p style="font-size: 0.82rem; color: var(--text-secondary);">I-manage ang mga pagkaon sa menu, presyo, category, ug i-upload ang picture sa matag putahe.</p>
+                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Moonflower Food Menu (Customizable Photos &amp; Prices)</h2>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary);">Manage restaurant dishes, pricing, categories, and upload or change dish photos anytime.</p>
                     </div>
                     <button type="button" class="btn btn-accent btn-sm" onclick="openMenuEditorModal()">
                         <i class="fa-solid fa-plus"></i>
-                        <span>Add New Food Item</span>
+                        <span>Add Food Item</span>
                     </button>
                 </div>
 
@@ -456,8 +462,8 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Picture</th>
-                                <th>Food Name &amp; Description</th>
+                                <th>Photo</th>
+                                <th>Dish Name &amp; Description</th>
                                 <th>Category</th>
                                 <th>Price</th>
                                 <th>Status</th>
@@ -498,9 +504,9 @@
                                             <span>Edit / Change Photo</span>
                                         </button>
                                         <a href="/admin/menu/toggle/{{ m.id }}" class="btn btn-outline btn-sm">
-                                            {% if m.is_available %}Set Sold Out{% else %}Set Available{% endif %}
+                                            {% if m.is_available %}Mark Sold Out{% else %}Mark Available{% endif %}
                                         </a>
-                                        <a href="/admin/menu/delete/{{ m.id }}" class="btn btn-outline btn-sm" onclick="return confirm('Papason kini nga pagkaon sa menu?')">
+                                        <a href="/admin/menu/delete/{{ m.id }}" class="btn btn-outline btn-sm" onclick="return confirm('Delete this dish from the menu?')">
                                             <i class="fa-regular fa-trash-can"></i>
                                         </a>
                                     </div>
@@ -516,8 +522,8 @@
             <section class="panel-card">
                 <div class="panel-header">
                     <div>
-                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Rooms &amp; Suites (Changeable Pictures &amp; Pricing)</h2>
-                        <p style="font-size: 0.82rem; color: var(--text-secondary);">Owner ug Admin lang ang makausab sa presyo ug picture sa matag kwarto.</p>
+                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Rooms &amp; Suites (Customizable Photos &amp; Pricing)</h2>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary);">Only Owners and Admins can update room rates, availability, and photos.</p>
                     </div>
                     <button type="button" class="btn btn-primary btn-sm" onclick="openRoomEditorModal()">
                         <i class="fa-solid fa-plus"></i>
@@ -529,7 +535,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Picture</th>
+                                <th>Photo</th>
                                 <th>Room #</th>
                                 <th>Type &amp; Description</th>
                                 <th>Capacity</th>
@@ -590,8 +596,8 @@
             <section class="panel-card" style="max-width: 780px;">
                 <div class="panel-header">
                     <div>
-                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Website Banner Photos, GCash &amp; Resort Details</h2>
-                        <p style="font-size: 0.82rem; color: var(--text-secondary);">Walay built-in nga picture — ikaw ang makapili, maka-upload, o maka-ilis sa Hero Banner ug Restaurant Banner bisan kanus-a.</p>
+                        <h2 class="font-display" style="font-size: 1.5rem; font-weight: 700;">Banner Photos, GCash &amp; Resort Details</h2>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary);">No built-in banner photos—upload your own or paste an image URL anytime.</p>
                     </div>
                 </div>
                 <form id="siteSettingsForm" onsubmit="saveSiteSettings(event)" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
@@ -607,18 +613,18 @@
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
-                            <label for="setContactPhone" class="form-label">Frontdesk Contact Number</label>
+                            <label for="setContactPhone" class="form-label">Front Desk Contact Number</label>
                             <input type="text" id="setContactPhone" value="{{ settings.contact_phone }}" required class="form-input">
                         </div>
                         <div class="form-group">
-                            <label for="setGcashNumber" class="form-label">Official GCash Account (For Online Payments)</label>
+                            <label for="setGcashNumber" class="form-label">Official GCash Account (Online Payments)</label>
                             <input type="text" id="setGcashNumber" value="{{ settings.gcash_number }}" class="form-input">
                         </div>
                     </div>
 
                     <!-- HERO BANNER PHOTO UPLOADER -->
                     <div class="form-group" style="padding: 1rem; background: var(--bg-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                        <label class="form-label">Main Resort Hero Banner Picture</label>
+                        <label class="form-label">Main Resort Hero Banner Photo</label>
                         <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 0.4rem;">
                             <img id="heroPhotoPreview" src="{{ settings.hero_image }}" alt="Hero Preview"
                                 style="width: 140px; height: 82px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); {% if not settings.hero_image %}display:none;{% endif %}">
@@ -626,7 +632,7 @@
                                 <input type="file" accept="image/*" class="form-input" style="padding: 0.45rem;" onchange="handlePhotoFileSelect(this, 'setHeroImage', 'heroPhotoPreview')">
                                 <input type="text" id="setHeroImage" value="{{ settings.hero_image }}" placeholder="Or paste image URL here (leave blank for none)" class="form-input" oninput="updatePreviewFromInput('setHeroImage', 'heroPhotoPreview')">
                                 <button type="button" class="btn btn-outline btn-sm" style="align-self: flex-start;" onclick="clearPhotoField('setHeroImage', 'heroPhotoPreview')">
-                                    <i class="fa-regular fa-trash-can"></i> Remove Hero Picture
+                                    <i class="fa-regular fa-trash-can"></i> Remove Hero Photo
                                 </button>
                             </div>
                         </div>
@@ -634,7 +640,7 @@
 
                     <!-- RESTAURANT DINING PHOTO UPLOADER -->
                     <div class="form-group" style="padding: 1rem; background: var(--bg-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                        <label class="form-label">Restaurant Dining Banner Picture</label>
+                        <label class="form-label">Restaurant Dining Banner Photo</label>
                         <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 0.4rem;">
                             <img id="diningPhotoPreview" src="{{ settings.dining_image }}" alt="Dining Preview"
                                 style="width: 140px; height: 82px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); {% if not settings.dining_image %}display:none;{% endif %}">
@@ -642,7 +648,7 @@
                                 <input type="file" accept="image/*" class="form-input" style="padding: 0.45rem;" onchange="handlePhotoFileSelect(this, 'setDiningImage', 'diningPhotoPreview')">
                                 <input type="text" id="setDiningImage" value="{{ settings.dining_image }}" placeholder="Or paste image URL here (leave blank for none)" class="form-input" oninput="updatePreviewFromInput('setDiningImage', 'diningPhotoPreview')">
                                 <button type="button" class="btn btn-outline btn-sm" style="align-self: flex-start;" onclick="clearPhotoField('setDiningImage', 'diningPhotoPreview')">
-                                    <i class="fa-regular fa-trash-can"></i> Remove Restaurant Picture
+                                    <i class="fa-regular fa-trash-can"></i> Remove Restaurant Photo
                                 </button>
                             </div>
                         </div>
@@ -664,7 +670,7 @@
             <button type="button" onclick="closeProcessModal()" class="modal-close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <span class="brand-subtitle" style="color: var(--brand-accent);">Payment &amp; Table/Chairs Verification</span>
+            <span class="brand-subtitle" style="color: var(--brand-accent);">Payment &amp; Seating Verification</span>
             <h3 id="procModalTitle" class="font-display" style="font-size: 1.7rem; font-weight: 700; margin-bottom: 0.25rem;">Process Booking</h3>
             <p id="procModalSubtitle" style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 1.15rem;"></p>
 
@@ -705,7 +711,7 @@
                         <label for="procPaymentMethod" class="form-label">Payment Method *</label>
                         <select id="procPaymentMethod" class="form-select">
                             <option value="GCash">GCash</option>
-                            <option value="Cash">Cash (Frontdesk)</option>
+                            <option value="Cash">Cash (Front Desk)</option>
                             <option value="Maya">Maya</option>
                             <option value="Bank Transfer">Bank Transfer</option>
                             <option value="Pay at Moonflower (On Arrival)">Pay at Moonflower (On Arrival)</option>
@@ -722,7 +728,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="procPaymentRef" class="form-label">GCash Ref # / Official Receipt #</label>
+                    <label for="procPaymentRef" class="form-label">GCash Reference # / Receipt #</label>
                     <input type="text" id="procPaymentRef" placeholder="e.g. GCash Ref 901238412" class="form-input">
                 </div>
 
@@ -776,18 +782,18 @@
                 </div>
 
                 <div class="form-group" style="padding: 0.85rem; background: var(--bg-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                    <label class="form-label">Room Picture (Upload Photo o Paste Image Link)</label>
+                    <label class="form-label">Room Photo (Upload Photo or Paste Image URL)</label>
                     <img id="editRoomPhotoPreview" src="" alt="Room Preview" style="width: 100%; height: 150px; object-fit: cover; border-radius: var(--radius-sm); margin: 0.4rem 0; display: none; border: 1px solid var(--border-subtle);">
                     <input type="file" id="editRoomFileInput" accept="image/*" class="form-input" style="padding: 0.4rem; margin-bottom: 0.45rem;" onchange="handlePhotoFileSelect(this, 'editRoomImageUrl', 'editRoomPhotoPreview')">
                     <input type="text" id="editRoomImageUrl" placeholder="Or paste image URL here" class="form-input" oninput="updatePreviewFromInput('editRoomImageUrl', 'editRoomPhotoPreview')">
                     <button type="button" class="btn btn-outline btn-sm" style="margin-top: 0.45rem; align-self: flex-start;" onclick="clearPhotoField('editRoomImageUrl', 'editRoomPhotoPreview')">
-                        <i class="fa-regular fa-trash-can"></i> Remove Picture
+                        <i class="fa-regular fa-trash-can"></i> Remove Photo
                     </button>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem;">
                     <i class="fa-solid fa-floppy-disk"></i>
-                    <span>Save Room &amp; Picture</span>
+                    <span>Save Room &amp; Photo</span>
                 </button>
             </form>
         </div>
@@ -799,11 +805,11 @@
             <button type="button" onclick="closeMenuEditorModal()" class="modal-close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <h3 id="menuEditorTitle" class="font-display" style="font-size: 1.65rem; font-weight: 700; margin-bottom: 1rem;">Add / Edit Food Menu Item</h3>
+            <h3 id="menuEditorTitle" class="font-display" style="font-size: 1.65rem; font-weight: 700; margin-bottom: 1rem;">Add / Edit Food Item</h3>
             <form id="menuEditorForm" onsubmit="submitMenuSave(event)" style="display: flex; flex-direction: column; gap: 0.9rem;">
                 <input type="hidden" id="editMenuId">
                 <div class="form-group">
-                    <label for="editMenuName" class="form-label">Food / Dish Name *</label>
+                    <label for="editMenuName" class="form-label">Dish Name *</label>
                     <input type="text" id="editMenuName" required placeholder="e.g. Crispy Pata Family Size" class="form-input">
                 </div>
 
@@ -825,23 +831,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="editMenuDesc" class="form-label">Food Description</label>
+                    <label for="editMenuDesc" class="form-label">Dish Description</label>
                     <textarea id="editMenuDesc" rows="2" class="form-textarea" placeholder="Describe the dish or serving size..."></textarea>
                 </div>
 
                 <div class="form-group" style="padding: 0.85rem; background: var(--bg-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                    <label class="form-label">Food Picture (Upload Photo o Paste Image Link)</label>
+                    <label class="form-label">Dish Photo (Upload Photo or Paste Image URL)</label>
                     <img id="editMenuPhotoPreview" src="" alt="Food Preview" style="width: 100%; height: 140px; object-fit: cover; border-radius: var(--radius-sm); margin: 0.4rem 0; display: none; border: 1px solid var(--border-subtle);">
                     <input type="file" id="editMenuFileInput" accept="image/*" class="form-input" style="padding: 0.4rem; margin-bottom: 0.45rem;" onchange="handlePhotoFileSelect(this, 'editMenuImageUrl', 'editMenuPhotoPreview')">
                     <input type="text" id="editMenuImageUrl" placeholder="Or paste image URL here" class="form-input" oninput="updatePreviewFromInput('editMenuImageUrl', 'editMenuPhotoPreview')">
                     <button type="button" class="btn btn-outline btn-sm" style="margin-top: 0.45rem; align-self: flex-start;" onclick="clearPhotoField('editMenuImageUrl', 'editMenuPhotoPreview')">
-                        <i class="fa-regular fa-trash-can"></i> Remove Picture
+                        <i class="fa-regular fa-trash-can"></i> Remove Photo
                     </button>
                 </div>
 
                 <button type="submit" class="btn btn-accent" style="width: 100%; padding: 0.85rem;">
                     <i class="fa-solid fa-floppy-disk"></i>
-                    <span>Save Food Item &amp; Picture</span>
+                    <span>Save Dish &amp; Photo</span>
                 </button>
             </form>
         </div>
@@ -920,7 +926,7 @@
             if (type === 'food') {
                 tableGroup.style.display = 'flex';
                 document.getElementById('procAssignedTable').value = b.assigned_table || `Table 1 — ${b.pax} Chairs Reserved`;
-                document.getElementById('procModalSubtitle').innerText = `Order: ${b.order_summary} | ${b.pax} Pax | Total Bill: ₱${b.total_price}`;
+                document.getElementById('procModalSubtitle').innerText = `Order: ${b.order_summary} | ${b.pax} Guests | Total Bill: ₱${b.total_price}`;
             } else {
                 tableGroup.style.display = 'none';
                 document.getElementById('procAssignedTable').value = '';
@@ -971,10 +977,10 @@
             });
             const data = await res.json();
             if (res.ok) {
-                showToast('Na-update na ang Booking ug Payment!');
+                showToast('Booking and payment updated!');
                 setTimeout(() => window.location.reload(), 600);
             } else {
-                showToast(data.error || 'Error saving.', true);
+                showToast(data.error || 'Error saving update.', true);
             }
         }
 
@@ -1083,7 +1089,7 @@
             });
             const data = await res.json();
             if (res.ok) {
-                showToast('Na-save na ang kwarto ug picture!');
+                showToast('Room and photo saved!');
                 window.location.hash = '#inventorySection';
                 window.location.reload();
             } else {
@@ -1094,7 +1100,7 @@
         function openMenuEditorModal(item = null) {
             document.getElementById('editMenuFileInput').value = '';
             if (item) {
-                document.getElementById('menuEditorTitle').innerText = `Edit Food: ${item.name}`;
+                document.getElementById('menuEditorTitle').innerText = `Edit Dish: ${item.name}`;
                 document.getElementById('editMenuId').value = item.id;
                 document.getElementById('editMenuName').value = item.name;
                 document.getElementById('editMenuCategory').value = item.category;
@@ -1103,7 +1109,7 @@
                 document.getElementById('editMenuImageUrl').value = item.image_url || '';
                 updatePreviewFromInput('editMenuImageUrl', 'editMenuPhotoPreview');
             } else {
-                document.getElementById('menuEditorTitle').innerText = 'Add New Food Item';
+                document.getElementById('menuEditorTitle').innerText = 'Add Food Item';
                 document.getElementById('menuEditorForm').reset();
                 document.getElementById('editMenuId').value = '';
                 clearPhotoField('editMenuImageUrl', 'editMenuPhotoPreview');
@@ -1138,11 +1144,11 @@
             });
             const data = await res.json();
             if (res.ok) {
-                showToast('Na-save na ang pagkaon sa menu ug picture!');
+                showToast('Dish and photo saved!');
                 window.location.hash = '#inventorySection';
                 window.location.reload();
             } else {
-                showToast(data.error || 'Error saving food item.', true);
+                showToast(data.error || 'Error saving dish.', true);
             }
         }
 
@@ -1164,7 +1170,7 @@
             });
             const data = await res.json();
             if (res.ok) {
-                showToast('Na-update na ang Banner Photos ug Site Info!');
+                showToast('Banner photos & site settings updated!');
             } else {
                 showToast(data.error || 'Error updating settings.', true);
             }

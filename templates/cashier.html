@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moonflower Cashier &amp; Receiver Terminal — Room &amp; Food Bookings</title>
-    <meta name="description" content="Frontdesk Cashier & Booking Receiver Terminal for Moonflower Resort & Fine Dining.">
+    <title>Moonflower Cashier &amp; Receiver Terminal — Front Desk Operations</title>
+    <meta name="description" content="Front Desk Cashier & Booking Receiver Terminal for Moonflower Resort & Fine Dining.">
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#143D30">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -18,9 +24,9 @@
                 <div class="brand-emblem" style="margin: 0 auto 0.85rem auto; width: 52px; height: 52px; font-size: 1.35rem; background: var(--brand-accent); color: #fff;">
                     <i class="fa-solid fa-cash-register"></i>
                 </div>
-                <span class="brand-subtitle">On-Site Frontdesk Staff</span>
+                <span class="brand-subtitle">Front Desk Operations</span>
                 <h1 class="font-display" style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">Cashier &amp; Receiver</h1>
-                <p style="font-size: 0.84rem; color: var(--text-secondary);">Tig-dawat sa Room &amp; Food bookings, GCash payment, ug tig-reserve sa Table + Chairs</p>
+                <p style="font-size: 0.84rem; color: var(--text-secondary);">Receive online room &amp; food bookings, verify GCash/cash payments, and assign table &amp; chairs.</p>
             </div>
 
             {% if error %}
@@ -31,22 +37,22 @@
 
             <form method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
                 <div class="form-group">
-                    <label for="cashierStaffName" class="form-label">Imong Ngalan (Staff / Cashier On-Duty) *</label>
-                    <input type="text" id="cashierStaffName" name="staff_name" required placeholder="e.g. Maria (Frontdesk)" class="form-input">
+                    <label for="cashierStaffName" class="form-label">Staff / Cashier Name *</label>
+                    <input type="text" id="cashierStaffName" name="staff_name" required placeholder="e.g. Maria (Front Desk)" class="form-input">
                 </div>
                 <div class="form-group">
                     <label for="cashierPassword" class="form-label">Cashier Password *</label>
-                    <input type="password" id="cashierPassword" name="password" required placeholder="Default: cashier123" class="form-input">
+                    <input type="password" id="cashierPassword" name="password" required placeholder="Enter cashier password" class="form-input">
                 </div>
                 <button type="submit" id="cashierLoginBtn" class="btn btn-accent" style="width: 100%; padding: 0.85rem;">
                     <i class="fa-solid fa-headset"></i>
-                    <span>Sulod sa Receiver Terminal</span>
+                    <span>Sign In to Cashier Terminal</span>
                 </button>
             </form>
 
             <div style="margin-top: 1.25rem; text-align: center; display: flex; justify-content: space-between; font-size: 0.8rem;">
-                <a href="/" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">&larr; Customer Page</a>
-                <a href="/admin" style="color: var(--text-secondary); text-decoration: none; font-weight: 600;">Owner / Admin Login &rarr;</a>
+                <a href="/" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">&larr; Customer Portal</a>
+                <a href="/admin" style="color: var(--text-secondary); text-decoration: none; font-weight: 600;">Owner &amp; Admin &rarr;</a>
             </div>
         </div>
     </main>
@@ -61,10 +67,10 @@
                 </div>
                 <div>
                     <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                        <span class="brand-title">Moonflower Receiver</span>
-                        <span class="status-badge status-pending" style="font-size: 0.65rem;">CASHIER ON-DUTY: {{ staff_name }}</span>
+                        <span class="brand-title">Moonflower Cashier</span>
+                        <span class="status-badge status-pending" style="font-size: 0.65rem;">ON DUTY: {{ staff_name }}</span>
                     </div>
-                    <span class="brand-subtitle">Philippine Time: <span id="phTimeDisplay">{{ stats.ph_time_now }}</span> &bull; Auto-Syncing to Overseas Owner</span>
+                    <span class="brand-subtitle">Philippine Time: <span id="phTimeDisplay">{{ stats.ph_time_now }}</span> &bull; Synced to Owner Monitor</span>
                 </div>
             </div>
 
@@ -91,9 +97,9 @@
         <section class="kpi-grid">
             <div class="kpi-card">
                 <div>
-                    <div class="kpi-label">Incoming Pending Requests</div>
+                    <div class="kpi-label">Pending Requests</div>
                     <div class="kpi-value" id="cashierPendingCount" style="color: var(--status-pending-text);">{{ stats.pending_count }}</div>
-                    <div class="kpi-sub">Naghulat sa imong confirmation</div>
+                    <div class="kpi-sub">Awaiting confirmation</div>
                 </div>
                 <div class="kpi-icon" style="background: var(--status-pending-bg); color: var(--status-pending-text);">
                     <i class="fa-solid fa-bell"></i>
@@ -115,7 +121,7 @@
                 <div>
                     <div class="kpi-label">Cash Collected</div>
                     <div class="kpi-value" style="color: var(--brand-primary);">₱{{ stats.cash_collected }}</div>
-                    <div class="kpi-sub">On-hand frontdesk cash</div>
+                    <div class="kpi-sub">Front desk cash on hand</div>
                 </div>
                 <div class="kpi-icon" style="background: var(--brand-primary-light); color: var(--brand-primary);">
                     <i class="fa-solid fa-money-bill-wave"></i>
@@ -139,37 +145,37 @@
             <div class="panel-header">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <i class="fa-solid fa-utensils" style="color: var(--brand-accent); font-size: 1.15rem;"></i>
-                    <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Customer Food Orders &amp; Table/Chairs Setup</h2>
+                    <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Food Orders &amp; Table/Chair Assignment</h2>
                     <span class="status-badge status-pending">{{ food_bookings|length }} Total</span>
                 </div>
                 <span style="font-size: 0.76rem; color: var(--text-muted);">
-                    <i class="fa-solid fa-chair"></i> I-reserve ang Table ug saktong gidaghanon sa Chairs base sa Pax sa customer
+                    <i class="fa-solid fa-chair"></i> Reserve a Table and matching Chairs based on customer party size
                 </span>
             </div>
 
             <div class="panel-toolbar">
                 <div class="filter-pills">
                     <button type="button" class="filter-pill active" onclick="filterTable('cashierFoodBookings', 'all', this)">All</button>
-                    <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'pending', this)">Pending Requests</button>
+                    <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'pending', this)">Pending</button>
                     <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'confirmed', this)">Confirmed</button>
                     <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'completed', this)">Completed</button>
                     <button type="button" class="filter-pill" onclick="filterTable('cashierFoodBookings', 'cancelled', this)">Cancelled</button>
                 </div>
-                <input type="search" placeholder="Search customer, food, ref code..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('cashierFoodBookings', this.value)">
+                <input type="search" placeholder="Search guest, dish, reference..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('cashierFoodBookings', this.value)">
             </div>
 
             <div class="table-responsive">
                 <table class="data-table" id="cashierFoodBookings">
                     <thead>
                         <tr>
-                            <th>Ref Code</th>
-                            <th>Customer &amp; Schedule</th>
-                            <th>Ordered Food Menu</th>
-                            <th>Pax &rarr; Table &amp; Chairs</th>
+                            <th>Reference</th>
+                            <th>Guest &amp; Schedule</th>
+                            <th>Ordered Dishes</th>
+                            <th>Guests &rarr; Seating</th>
                             <th>Total Bill</th>
-                            <th>GCash / Payment</th>
+                            <th>Payment</th>
                             <th>Status</th>
-                            <th>Cashier Action</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -194,7 +200,7 @@
                             </td>
                             <td>
                                 <span class="status-badge status-pending">
-                                    <i class="fa-solid fa-users"></i> {{ fb.pax }} Kabuok (Pax)
+                                    <i class="fa-solid fa-users"></i> {{ fb.pax }} Guests
                                 </span>
                                 <div style="font-size: 0.78rem; font-weight: 700; color: var(--brand-primary); margin-top: 4px;">
                                     <i class="fa-solid fa-chair"></i> {{ fb.assigned_table }}
@@ -217,13 +223,13 @@
                                     data-booking='{{ fb | tojson }}'
                                     onclick="openProcessModal('food', this)">
                                     <i class="fa-solid fa-chair"></i>
-                                    <span>Assign Table &amp; GCash</span>
+                                    <span>Assign &amp; Verify</span>
                                 </button>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">Walay food booking requests sa pagkakaron.</td>
+                            <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">No food booking requests yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -236,7 +242,7 @@
             <div class="panel-header">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <i class="fa-solid fa-bed" style="color: var(--brand-primary); font-size: 1.15rem;"></i>
-                    <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Customer Room Booking Requests</h2>
+                    <h2 class="font-display" style="font-size: 1.45rem; font-weight: 700;">Room Booking Requests</h2>
                     <span class="status-badge status-confirmed">{{ room_bookings|length }} Total</span>
                 </div>
             </div>
@@ -244,25 +250,25 @@
             <div class="panel-toolbar">
                 <div class="filter-pills">
                     <button type="button" class="filter-pill active" onclick="filterTable('cashierRoomTable', 'all', this)">All</button>
-                    <button type="button" class="filter-pill" onclick="filterTable('cashierRoomTable', 'pending', this)">Pending Requests</button>
+                    <button type="button" class="filter-pill" onclick="filterTable('cashierRoomTable', 'pending', this)">Pending</button>
                     <button type="button" class="filter-pill" onclick="filterTable('cashierRoomTable', 'confirmed', this)">Confirmed</button>
                     <button type="button" class="filter-pill" onclick="filterTable('cashierRoomTable', 'completed', this)">Completed</button>
                     <button type="button" class="filter-pill" onclick="filterTable('cashierRoomTable', 'cancelled', this)">Cancelled</button>
                 </div>
-                <input type="search" placeholder="Search customer, ref code, phone..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('cashierRoomTable', this.value)">
+                <input type="search" placeholder="Search guest, room, phone..." class="form-input" style="max-width: 280px; padding: 0.48rem 0.85rem; font-size: 0.82rem;" oninput="searchTableRows('cashierRoomTable', this.value)">
             </div>
 
             <div class="table-responsive">
                 <table class="data-table" id="cashierRoomTable">
                     <thead>
                         <tr>
-                            <th>Ref Code</th>
-                            <th>Customer &amp; Notes</th>
+                            <th>Reference</th>
+                            <th>Guest &amp; Notes</th>
                             <th>Room &amp; Dates</th>
                             <th>Total Bill</th>
-                            <th>GCash / Payment</th>
-                            <th>Booking Status</th>
-                            <th>Cashier Action</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -308,7 +314,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">Walay room booking requests sa pagkakaron.</td>
+                            <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">No room booking requests yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -318,13 +324,13 @@
 
     </main>
 
-    <!-- PROCESS BOOKING, TABLE/CHAIRS ASSIGNMENT & GCASH PAYMENT MODAL -->
+    <!-- PROCESS BOOKING, TABLE/CHAIRS ASSIGNMENT & PAYMENT MODAL -->
     <div id="processBookingModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
         <div class="modal-card">
             <button type="button" onclick="closeProcessModal()" class="modal-close">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <span class="brand-subtitle" style="color: var(--brand-accent);">Cashier Verification &amp; Table/Chairs Setup</span>
+            <span class="brand-subtitle" style="color: var(--brand-accent);">Cashier Verification &amp; Seating Assignment</span>
             <h3 id="procModalTitle" class="font-display" style="font-size: 1.7rem; font-weight: 700; margin-bottom: 0.25rem;">Process Booking</h3>
             <p id="procModalSubtitle" style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 1.1rem;"></p>
 
@@ -333,10 +339,9 @@
                 <input type="hidden" id="procItemId">
                 <input type="hidden" id="procTotalBillRaw">
 
-                <!-- Table & Chairs Assignment (Shown for Food Bookings) -->
                 <div class="form-group" id="procAssignedTableGroup" style="padding: 0.85rem; background: var(--brand-accent-light); border-radius: var(--radius-md); border: 1px solid var(--status-pending-border);">
                     <label for="procAssignedTable" class="form-label" style="color: var(--brand-primary);">
-                        <i class="fa-solid fa-chair"></i> I-assign ang Table ug Gidaghanon sa Bangko (Chairs) *
+                        <i class="fa-solid fa-chair"></i> Assigned Table &amp; Chairs *
                     </label>
                     <input type="text" id="procAssignedTable" placeholder="e.g. Table 3 (Veranda) — 5 Chairs Reserved" class="form-input" style="background: #fff;">
                 </div>
@@ -345,18 +350,18 @@
                     <div class="form-group">
                         <label for="procStatus" class="form-label">Booking Status *</label>
                         <select id="procStatus" class="form-select">
-                            <option value="pending">PENDING (Waiting)</option>
-                            <option value="confirmed">CONFIRMED (Approve &amp; Reserve)</option>
-                            <option value="completed">COMPLETED (Done / Served)</option>
+                            <option value="pending">PENDING</option>
+                            <option value="confirmed">CONFIRMED</option>
+                            <option value="completed">COMPLETED</option>
                             <option value="cancelled">CANCELLED</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="procPaymentStatus" class="form-label">Payment Status *</label>
                         <select id="procPaymentStatus" class="form-select">
-                            <option value="unpaid">UNPAID (Walay Bayad)</option>
+                            <option value="unpaid">UNPAID</option>
                             <option value="partial">PARTIAL / DOWNPAYMENT</option>
-                            <option value="paid">FULLY PAID (Impormado)</option>
+                            <option value="paid">FULLY PAID</option>
                         </select>
                     </div>
                 </div>
@@ -366,7 +371,7 @@
                         <label for="procPaymentMethod" class="form-label">Payment Method *</label>
                         <select id="procPaymentMethod" class="form-select">
                             <option value="GCash">GCash</option>
-                            <option value="Cash">Cash (Frontdesk)</option>
+                            <option value="Cash">Cash (Front Desk)</option>
                             <option value="Maya">Maya</option>
                             <option value="Bank Transfer">Bank Transfer</option>
                             <option value="Pay at Moonflower (On Arrival)">Pay at Moonflower (On Arrival)</option>
@@ -383,18 +388,18 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="procPaymentRef" class="form-label">GCash Ref # / Official Receipt #</label>
+                    <label for="procPaymentRef" class="form-label">GCash Reference # / Official Receipt #</label>
                     <input type="text" id="procPaymentRef" placeholder="e.g. GCash Ref 901238412" class="form-input">
                 </div>
 
                 <div class="form-group">
-                    <label for="procNotes" class="form-label">Notes / Cashier Remarks</label>
-                    <textarea id="procNotes" rows="2" class="form-textarea" placeholder="Add verification remarks or special instructions..."></textarea>
+                    <label for="procNotes" class="form-label">Cashier Remarks</label>
+                    <textarea id="procNotes" rows="2" class="form-textarea" placeholder="Add verification notes or seating details..."></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem;">
                     <i class="fa-solid fa-check-double"></i>
-                    <span>Save &amp; Sync to Overseas Owner Monitor</span>
+                    <span>Save &amp; Sync to Owner Monitor</span>
                 </button>
             </form>
         </div>
@@ -441,7 +446,7 @@
             if (type === 'food') {
                 tableGroup.style.display = 'flex';
                 document.getElementById('procAssignedTable').value = b.assigned_table || `Table 1 — ${b.pax} Chairs Reserved`;
-                document.getElementById('procModalSubtitle').innerText = `Order: ${b.order_summary} | ${b.pax} Pax | Total Bill: ₱${b.total_price}`;
+                document.getElementById('procModalSubtitle').innerText = `Order: ${b.order_summary} | ${b.pax} Guests | Total Bill: ₱${b.total_price}`;
             } else {
                 tableGroup.style.display = 'none';
                 document.getElementById('procAssignedTable').value = '';
@@ -492,10 +497,10 @@
             });
             const data = await res.json();
             if (res.ok) {
-                showToast('Na-save na ang Table/Chairs setup ug GCash payment!');
+                showToast('Booking updated and synced to Owner Monitor!');
                 setTimeout(() => window.location.reload(), 600);
             } else {
-                showToast(data.error || 'Error saving.', true);
+                showToast(data.error || 'Error saving update.', true);
             }
         }
 
@@ -508,7 +513,7 @@
                 document.getElementById('phTimeDisplay').innerText = data.stats.ph_time_now;
                 if (data.stats.pending_count > currentPendingCount) {
                     currentPendingCount = data.stats.pending_count;
-                    showToast('🔔 Naa kay BAG-ONG online booking request gikan sa customer!');
+                    showToast('New online booking request received!');
                     setTimeout(() => window.location.reload(), 1800);
                 }
             } catch (e) {}
