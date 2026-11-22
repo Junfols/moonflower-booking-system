@@ -420,6 +420,7 @@ def _record_monitor_hit(path, method, ua):
 
 
 @app.route('/health', methods=['GET', 'HEAD'])
+@app.route('/api/health', methods=['GET', 'HEAD'])
 @app.route('/healthz', methods=['GET', 'HEAD'])
 @app.route('/ping', methods=['GET', 'HEAD'])
 def health_check():
