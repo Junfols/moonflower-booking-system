@@ -678,22 +678,23 @@
                 <div style="margin-top: 1.75rem; padding: 1rem; border-radius: var(--radius-md); background: var(--surface-muted); border: 1px solid var(--border-subtle);">
                     <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
                         <i class="fa-solid fa-heart-pulse" style="color: var(--brand-primary); margin-right: 0.35rem;"></i>
-                        Render Anti-Sleep Health Endpoint (<code style="font-size: 0.8rem;">/health</code>)
+                        Hosting, Database &amp; Health Check (<code style="font-size: 0.8rem;">/api/health</code>)
                     </div>
                     <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.6rem;">
-                        Use Monitor Type <strong>HTTP(s)</strong> (or <strong>Keyword</strong>) &mdash; <em>not</em> ICMP Ping &mdash; every <strong>5 minutes</strong> pointing to this exact URL (never <code>/robots.txt</code>):
+                        Connect Supabase PostgreSQL (<code>DATABASE_URL</code> or Vercel <code>POSTGRES_URL</code>) so bookings and staff accounts persist permanently across serverless restarts:
                     </p>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.65rem;">
                         <input type="text" id="renderHealthUrlPreview" readonly class="form-input" style="flex: 1; min-width: 240px; font-family: monospace; font-size: 0.82rem; background: #fff;">
                         <button type="button" onclick="copyHealthUrl()" class="btn btn-outline btn-sm">
                             <i class="fa-regular fa-copy"></i>
-                            <span>Copy /health URL</span>
+                            <span>Copy /api/health URL</span>
                         </button>
                     </div>
                     <div style="font-size: 0.76rem; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 1rem;">
+                        <span><strong>Platform:</strong> {{ stats.platform }}</span>
                         <span><strong>Database:</strong> {{ stats.db_backend }}</span>
                         <span><strong>Last Boot (PH):</strong> {{ stats.booted_at_ph }} ({{ stats.uptime_human }})</span>
-                        <span><strong>Last Monitor Ping:</strong> {{ stats.last_ping_summary }}</span>
+                        <span><strong>Last Ping:</strong> {{ stats.last_ping_summary }}</span>
                     </div>
                 </div>
             </section>
@@ -1395,7 +1396,7 @@
 
         const healthPreviewEl = document.getElementById('renderHealthUrlPreview');
         if (healthPreviewEl) {
-            healthPreviewEl.value = `${window.location.origin}/health`;
+            healthPreviewEl.value = `${window.location.origin}/api/health`;
         }
 
         function copyHealthUrl() {
@@ -1404,14 +1405,14 @@
             input.select();
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(input.value).then(() => {
-                    showToast('Copied /health URL!');
+                    showToast('Copied /api/health URL!');
                 }).catch(() => {
                     document.execCommand('copy');
-                    showToast('Copied /health URL!');
+                    showToast('Copied /api/health URL!');
                 });
             } else {
                 document.execCommand('copy');
-                showToast('Copied /health URL!');
+                showToast('Copied /api/health URL!');
             }
         }
 

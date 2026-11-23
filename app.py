@@ -5,36 +5,55 @@ import json
 import time
 import threading
 import urllib.request
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from datetime import datetime, date, timezone, timedelta
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text, or_
 
+_IS_VERCEL = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'))
+_PLATFORM_NAME = 'Vercel' if _IS_VERCEL else ('Render' if (os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_URL')) else 'Local / Custom')
+
+
+def normalize_database_url(raw_url='', is_vercel=False):
+    db_url = (raw_url or '').strip()
+    if not db_url:
+        return 'sqlite:////tmp/moonflower_booking.db' if is_vercel else 'sqlite:///moonflower_booking.db'
+    if db_url.startswith('postgres://'):
+        db_url = db_url.replace('postgres://', 'postgresql://', 1)
+    if db_url.startswith('postgresql://'):
+        parts = urlsplit(db_url)
+        disallowed_params = {'supa', 'pgbouncer', 'schema', 'connection_limit', 'pool_timeout'}
+        params = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k.lower() not in disallowed_params]
+        param_keys = {k.lower() for k, _ in params}
+        host = (parts.hostname or '').lower()
+        if 'sslmode' not in param_keys and host not in ('localhost', '127.0.0.1', '::1'):
+            params.append(('sslmode', 'require'))
+        db_url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
+    return db_url
+
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'moonflower-secret-key-2026')
-_raw_db_url = (os.environ.get('DATABASE_URL') or '').strip()
-if not _raw_db_url:
-    _db_url = 'sqlite:///moonflower_booking.db'
-elif _raw_db_url.startswith('postgres://'):
-    _db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
-else:
-    _db_url = _raw_db_url
-
+_raw_db_url = (
+    os.environ.get('DATABASE_URL')
+    or os.environ.get('POSTGRES_URL')
+    or os.environ.get('SQLALCHEMY_DATABASE_URI')
+    or ''
+)
+_db_url = normalize_database_url(_raw_db_url, is_vercel=_IS_VERCEL)
 _IS_POSTGRES = _db_url.startswith('postgresql://')
-if _IS_POSTGRES and 'sslmode=' not in _db_url and 'localhost' not in _db_url and '127.0.0.1' not in _db_url:
-    _sep = '&' if '?' in _db_url else '?'
-    _db_url = f"{_db_url}{_sep}sslmode=require"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 if _IS_POSTGRES:
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,
-        'pool_recycle': 280,
-        'pool_size': 5,
-        'max_overflow': 5,
+        'pool_recycle': 240,
+        'pool_size': 2 if _IS_VERCEL else 5,
+        'max_overflow': 3 if _IS_VERCEL else 5,
     }
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
+app.config['MAX_CONTENT_LENGTH'] = (4 * 1024 * 1024) if _IS_VERCEL else (16 * 1024 * 1024)
 
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'owner123')
@@ -451,7 +470,8 @@ def health_check():
     payload = {
         'status': 'ok',
         'service': 'moonflower-booking-system',
-        'database': 'PostgreSQL' if _IS_POSTGRES else 'SQLite (Local)',
+        'platform': _PLATFORM_NAME,
+        'database': 'PostgreSQL' if _IS_POSTGRES else ('SQLite (/tmp Ephemeral)' if _IS_VERCEL else 'SQLite (Local)'),
         'ph_time': now_ph_str(),
         'booted_at_ph': _BOOT_TIME_PH,
         'uptime_seconds': int(time.monotonic() - _BOOT_MONOTONIC),
@@ -1030,7 +1050,8 @@ def build_dashboard_context():
             if _LAST_MONITOR_HIT.get('time_ph')
             else 'None received yet since last boot'
         ),
-        'db_backend': 'PostgreSQL (Persistent)' if _IS_POSTGRES else 'SQLite (Local / Resets on Sleep)'
+        'platform': _PLATFORM_NAME,
+        'db_backend': 'PostgreSQL (Persistent)' if _IS_POSTGRES else ('SQLite (/tmp Ephemeral — Connect Supabase DB!)' if _IS_VERCEL else 'SQLite (Local / Resets on Sleep)')
     }
 
     return {
@@ -1628,6 +1649,8 @@ _KEEPALIVE_STARTED = False
 def start_render_keepalive():
     """Pings the public Render /health URL every 9 minutes while awake to prevent 15-min idle spin-down."""
     global _KEEPALIVE_STARTED
+    if _IS_VERCEL:
+        return
     enabled = os.environ.get('ENABLE_SELF_KEEPALIVE', '1').strip().lower() in ('1', 'true', 'yes', 'on')
     if not enabled:
         return
