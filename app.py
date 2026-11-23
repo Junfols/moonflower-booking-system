@@ -4,6 +4,8 @@ import csv
 import io
 import json
 import time
+import base64
+import hashlib
 import threading
 import importlib.util
 import urllib.request
@@ -12,6 +14,7 @@ from datetime import datetime, date, timezone, timedelta
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text, or_
+from sqlalchemy.orm import defer
 
 _IS_VERCEL = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'))
 _PLATFORM_NAME = 'Vercel' if _IS_VERCEL else ('Render' if (os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_URL')) else 'Local / Custom')
@@ -142,8 +145,19 @@ class StaffAccount(db.Model):
 
 @app.after_request
 def add_no_cache_headers(response):
-    """Prevent browser or proxy caching of authenticated portals and logout redirects."""
+    """Prevent browser/proxy caching of authenticated portals & private APIs while allowing CDN/browser caching on public menu & hashed media."""
     path = request.path or ''
+    if path.startswith('/api/media/'):
+        if response.status_code == 200:
+            if request.args.get('v'):
+                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            else:
+                response.headers['Cache-Control'] = 'public, max-age=300, s-maxage=600'
+        return response
+    if path in ('/api/menu', '/api/catalog'):
+        if response.status_code == 200:
+            response.headers['Cache-Control'] = 'public, max-age=30, s-maxage=60, stale-while-revalidate=300'
+        return response
     if path.startswith('/admin') or path.startswith('/cashier') or path.startswith('/owner') or path.startswith('/api/'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
@@ -300,15 +314,83 @@ REAL_MOONFLOWER_MENU = [
 ]
 
 
-def get_site_settings():
+_PUBLIC_CACHE_LOCK = threading.Lock()
+_PUBLIC_CACHE = {
+    'db_uri': None,
+    'settings': None,
+    'settings_exp': 0.0,
+    'rooms': None,
+    'rooms_exp': 0.0,
+    'menu': None,
+    'menu_exp': 0.0,
+}
+_CACHE_TTL_SECONDS = 45.0
+
+
+def invalidate_public_cache():
+    with _PUBLIC_CACHE_LOCK:
+        _PUBLIC_CACHE['settings'] = None
+        _PUBLIC_CACHE['settings_exp'] = 0.0
+        _PUBLIC_CACHE['rooms'] = None
+        _PUBLIC_CACHE['rooms_exp'] = 0.0
+        _PUBLIC_CACHE['menu'] = None
+        _PUBLIC_CACHE['menu_exp'] = 0.0
+
+
+def _media_url_or_raw(raw_val, endpoint_path):
+    val = (raw_val or '').strip()
+    if not val:
+        return ''
+    if val.startswith('data:image/'):
+        digest = hashlib.md5(val.encode('utf-8')).hexdigest()[:10]
+        return f"{endpoint_path}?v={digest}"
+    return val
+
+
+def _decode_data_uri_image(raw_val):
+    val = (raw_val or '').strip()
+    if not val.startswith('data:image/'):
+        return None
+    try:
+        header, b64_part = val.split(',', 1)
+        mime = header[5:].split(';', 1)[0] or 'image/jpeg'
+        if ';base64' in header:
+            return mime, base64.b64decode(b64_part)
+    except Exception:
+        return None
+    return None
+
+
+def get_site_settings(use_cache=True):
+    cur_uri = app.config.get('SQLALCHEMY_DATABASE_URI')
+    now_m = time.monotonic()
+    if use_cache:
+        with _PUBLIC_CACHE_LOCK:
+            if (_PUBLIC_CACHE['db_uri'] == cur_uri
+                    and _PUBLIC_CACHE['settings'] is not None
+                    and now_m < _PUBLIC_CACHE['settings_exp']):
+                return dict(_PUBLIC_CACHE['settings'])
     settings = dict(DEFAULT_SITE_SETTINGS)
     try:
         rows = SiteSetting.query.all()
         for r in rows:
             settings[r.key] = r.value
+        if use_cache:
+            with _PUBLIC_CACHE_LOCK:
+                _PUBLIC_CACHE['db_uri'] = cur_uri
+                _PUBLIC_CACHE['settings'] = dict(settings)
+                _PUBLIC_CACHE['settings_exp'] = now_m + _CACHE_TTL_SECONDS
     except Exception:
         pass
     return settings
+
+
+def get_public_settings():
+    s = get_site_settings(use_cache=True)
+    for k in ('hero_image', 'dining_image', 'gcash_qr_image'):
+        if s.get(k):
+            s[k] = _media_url_or_raw(s[k], f"/api/media/setting/{k}")
+    return s
 
 
 def record_audit(actor_role, actor_name, action_type, reference_code, details):
@@ -504,19 +586,46 @@ def _record_monitor_hit(path, method, ua):
 
 _DB_INIT_LOCK = threading.Lock()
 _DB_INIT_DONE = False
+_DB_INIT_URI = None
 _DB_INIT_ERROR = _DB_CONFIG_WARNING
 
 
 def ensure_db_initialized():
-    global _DB_INIT_DONE, _DB_INIT_ERROR
-    if _DB_INIT_DONE:
+    global _DB_INIT_DONE, _DB_INIT_URI, _DB_INIT_ERROR
+    cur_uri = app.config.get('SQLALCHEMY_DATABASE_URI')
+    if _DB_INIT_DONE and _DB_INIT_URI == cur_uri:
         return True
     with _DB_INIT_LOCK:
-        if _DB_INIT_DONE:
+        if _DB_INIT_DONE and _DB_INIT_URI == cur_uri:
             return True
         try:
+            quick_row = None
+            try:
+                quick_row = db.session.execute(text(
+                    "SELECT (SELECT 1 FROM site_settings LIMIT 1), "
+                    "(SELECT 1 FROM rooms LIMIT 1), "
+                    "(SELECT 1 FROM menu_items LIMIT 1), "
+                    "(SELECT 1 FROM staff_accounts LIMIT 1), "
+                    "(SELECT COUNT(payment_proof) FROM room_bookings WHERE 1=0), "
+                    "(SELECT COUNT(payment_proof) FROM food_bookings WHERE 1=0)"
+                )).first()
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+                quick_row = None
+
+            if quick_row and all(v is not None for v in quick_row[:4]):
+                _DB_INIT_DONE = True
+                _DB_INIT_URI = cur_uri
+                _DB_INIT_ERROR = _DB_CONFIG_WARNING
+                return True
+
             seed_data_if_empty()
+            invalidate_public_cache()
             _DB_INIT_DONE = True
+            _DB_INIT_URI = cur_uri
             _DB_INIT_ERROR = _DB_CONFIG_WARNING
             return True
         except Exception as exc:
@@ -579,6 +688,111 @@ def health_check():
     return resp, status_code
 
 
+def get_cached_active_rooms():
+    cur_uri = app.config.get('SQLALCHEMY_DATABASE_URI')
+    now_m = time.monotonic()
+    with _PUBLIC_CACHE_LOCK:
+        if (_PUBLIC_CACHE['db_uri'] == cur_uri
+                and _PUBLIC_CACHE['rooms'] is not None
+                and now_m < _PUBLIC_CACHE['rooms_exp']):
+            return list(_PUBLIC_CACHE['rooms'])
+    rows = Room.query.filter_by(is_active=True).order_by(Room.room_number.asc()).all()
+    data = [{
+        'id': r.id,
+        'room_number': r.room_number,
+        'room_type': r.room_type,
+        'capacity': r.capacity,
+        'price_per_night': r.price_per_night,
+        'description': r.description or 'Air-conditioned, private bath, hot shower, free Wi-Fi.',
+        'image_url': _media_url_or_raw(r.image_url, f"/api/media/room/{r.id}")
+    } for r in rows]
+    with _PUBLIC_CACHE_LOCK:
+        _PUBLIC_CACHE['db_uri'] = cur_uri
+        _PUBLIC_CACHE['rooms'] = list(data)
+        _PUBLIC_CACHE['rooms_exp'] = now_m + _CACHE_TTL_SECONDS
+    return data
+
+
+def get_cached_active_menu():
+    cur_uri = app.config.get('SQLALCHEMY_DATABASE_URI')
+    now_m = time.monotonic()
+    with _PUBLIC_CACHE_LOCK:
+        if (_PUBLIC_CACHE['db_uri'] == cur_uri
+                and _PUBLIC_CACHE['menu'] is not None
+                and now_m < _PUBLIC_CACHE['menu_exp']):
+            return list(_PUBLIC_CACHE['menu'])
+    foods = MenuItem.query.filter_by(is_available=True).order_by(MenuItem.id.asc()).all()
+    data = [{
+        'id': m.id,
+        'name': m.name,
+        'category': m.category,
+        'price': m.price,
+        'description': m.description or '',
+        'image_url': _media_url_or_raw(m.image_url, f"/api/media/menu/{m.id}")
+    } for m in foods]
+    with _PUBLIC_CACHE_LOCK:
+        _PUBLIC_CACHE['db_uri'] = cur_uri
+        _PUBLIC_CACHE['menu'] = list(data)
+        _PUBLIC_CACHE['menu_exp'] = now_m + _CACHE_TTL_SECONDS
+    return data
+
+
+def query_available_rooms(check_in, check_out, guests=2):
+    all_active = get_cached_active_rooms()
+    booked_ids = {
+        row[0] for row in db.session.query(RoomBooking.room_id).filter(
+            RoomBooking.status.in_(['pending', 'confirmed']),
+            RoomBooking.check_in_date < check_out,
+            RoomBooking.check_out_date > check_in
+        ).all()
+    }
+    return [r for r in all_active if r['capacity'] >= guests and r['id'] not in booked_ids]
+
+
+@app.route('/api/media/<kind>/<ident>')
+def serve_cached_media(kind, ident):
+    raw_val = ''
+    if kind == 'setting':
+        row = db.session.get(SiteSetting, ident)
+        raw_val = row.value if row else ''
+    elif kind == 'room' and ident.isdigit():
+        row = db.session.get(Room, int(ident))
+        raw_val = row.image_url if row else ''
+    elif kind == 'menu' and ident.isdigit():
+        row = db.session.get(MenuItem, int(ident))
+        raw_val = row.image_url if row else ''
+    else:
+        return Response(status=404)
+
+    decoded = _decode_data_uri_image(raw_val)
+    if not decoded:
+        return Response(status=404)
+    mime, img_bytes = decoded
+    return Response(img_bytes, mimetype=mime)
+
+
+@app.route('/api/bookings/proof/<booking_type>/<int:item_id>')
+def serve_booking_payment_proof(booking_type, item_id):
+    if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
+        return jsonify({'error': 'Unauthorized'}), 401
+    if not ensure_cashier_still_on_duty():
+        return jsonify({'error': 'Unauthorized'}), 403
+    model = RoomBooking if booking_type == 'room' else FoodBooking if booking_type == 'food' else None
+    if not model:
+        return Response(status=404)
+    item = db.session.get(model, item_id)
+    raw_val = item.payment_proof if item else ''
+    if not raw_val:
+        return Response(status=404)
+    decoded = _decode_data_uri_image(raw_val)
+    if decoded:
+        mime, img_bytes = decoded
+        return Response(img_bytes, mimetype=mime)
+    if raw_val.startswith(('http://', 'https://')):
+        return redirect(raw_val)
+    return Response(status=404)
+
+
 # ==========================================
 # 1. CUSTOMER PORTAL ROUTES
 # ==========================================
@@ -594,47 +808,34 @@ def home():
         _record_monitor_hit('/', request.method, ua)
     if request.method == 'HEAD':
         return Response(status=200, headers={'Cache-Control': 'no-store, no-cache'})
-    settings = get_site_settings()
-    return render_template('index.html', settings=settings)
+    settings = get_public_settings()
+    today_ph = datetime.now(PH_TZ).date()
+    tomorrow_ph = today_ph + timedelta(days=1)
+    try:
+        initial_rooms = query_available_rooms(today_ph, tomorrow_ph, guests=2)
+    except Exception:
+        initial_rooms = []
+    return render_template(
+        'index.html',
+        settings=settings,
+        initial_rooms=initial_rooms,
+        initial_check_in=str(today_ph),
+        initial_check_out=str(tomorrow_ph)
+    )
 
 
 @app.route('/api/catalog', methods=['GET'])
 def get_catalog():
-    rooms = Room.query.filter_by(is_active=True).order_by(Room.room_number.asc()).all()
-    foods = MenuItem.query.filter_by(is_available=True).order_by(MenuItem.category.asc(), MenuItem.id.asc()).all()
     return jsonify({
-        'settings': get_site_settings(),
-        'rooms': [{
-            'id': r.id,
-            'room_number': r.room_number,
-            'room_type': r.room_type,
-            'capacity': r.capacity,
-            'price_per_night': r.price_per_night,
-            'description': r.description or 'Air-conditioned, private bath, hot shower, free Wi-Fi.',
-            'image_url': r.image_url or ''
-        } for r in rooms],
-        'menu': [{
-            'id': m.id,
-            'name': m.name,
-            'category': m.category,
-            'price': m.price,
-            'description': m.description or '',
-            'image_url': m.image_url or ''
-        } for m in foods]
+        'settings': get_public_settings(),
+        'rooms': get_cached_active_rooms(),
+        'menu': get_cached_active_menu()
     })
 
 
 @app.route('/api/menu', methods=['GET'])
 def get_food_menu():
-    foods = MenuItem.query.filter_by(is_available=True).order_by(MenuItem.id.asc()).all()
-    return jsonify([{
-        'id': m.id,
-        'name': m.name,
-        'category': m.category,
-        'price': m.price,
-        'description': m.description or '',
-        'image_url': m.image_url or ''
-    } for m in foods])
+    return jsonify(get_cached_active_menu())
 
 
 @app.route('/api/rooms/available', methods=['GET'])
@@ -655,29 +856,7 @@ def get_available_rooms():
     if check_out <= check_in:
         return jsonify({'error': 'Check-out date must be after check-in date.'}), 400
 
-    booked_room_ids = db.select(RoomBooking.room_id).filter(
-        RoomBooking.status.in_(['pending', 'confirmed']),
-        RoomBooking.check_in_date < check_out,
-        RoomBooking.check_out_date > check_in
-    )
-
-    available_rooms = Room.query.filter(
-        Room.is_active == True,
-        Room.capacity >= guests,
-        ~Room.id.in_(booked_room_ids)
-    ).order_by(Room.room_number.asc()).all()
-
-    data = [{
-        'id': r.id,
-        'room_number': r.room_number,
-        'room_type': r.room_type,
-        'capacity': r.capacity,
-        'price_per_night': r.price_per_night,
-        'description': r.description or 'Air-conditioned, private bath, hot shower, free Wi-Fi.',
-        'image_url': r.image_url or ''
-    } for r in available_rooms]
-
-    return jsonify(data)
+    return jsonify(query_available_rooms(check_in, check_out, guests))
 
 
 def sanitize_payment_proof(raw_val):
@@ -1038,7 +1217,24 @@ def build_dashboard_context():
             keys.append('month')
         return keys
 
-    rb_records = db.session.query(RoomBooking, Room).join(Room, RoomBooking.room_id == Room.id).order_by(RoomBooking.id.desc()).all()
+    room_proof_ids = {
+        row[0] for row in db.session.query(RoomBooking.id).filter(
+            RoomBooking.payment_proof != '', RoomBooking.payment_proof.isnot(None)
+        ).all()
+    }
+    food_proof_ids = {
+        row[0] for row in db.session.query(FoodBooking.id).filter(
+            FoodBooking.payment_proof != '', FoodBooking.payment_proof.isnot(None)
+        ).all()
+    }
+
+    rb_records = (
+        db.session.query(RoomBooking, Room)
+        .options(defer(RoomBooking.payment_proof), defer(Room.image_url))
+        .join(Room, RoomBooking.room_id == Room.id)
+        .order_by(RoomBooking.id.desc())
+        .all()
+    )
     room_bookings = []
     confirmed_revenue = 0.0
     pending_revenue = 0.0
@@ -1082,6 +1278,7 @@ def build_dashboard_context():
                 bucket['room_confirmed'] += price_val
                 bucket['confirmed_total'] += price_val
 
+        has_rm_proof = b.id in room_proof_ids
         room_bookings.append({
             'id': b.id,
             'reference_code': f"MF-RM-{b.id:04d}",
@@ -1098,15 +1295,16 @@ def build_dashboard_context():
             'amount_paid': f"{paid_val:,.2f}",
             'amount_paid_raw': paid_val,
             'payment_ref': b.payment_ref or '',
-            'payment_proof': b.payment_proof or '',
-            'has_payment_proof': bool(b.payment_proof),
+            'payment_proof': f"/api/bookings/proof/room/{b.id}" if has_rm_proof else '',
+            'payment_proof_url': f"/api/bookings/proof/room/{b.id}" if has_rm_proof else '',
+            'has_payment_proof': has_rm_proof,
             'handled_by': b.handled_by or '—',
             'updated_at_ph': b.updated_at_ph or '—',
             'notes': b.notes or '',
             'status': b.status
         })
 
-    fb_records = FoodBooking.query.order_by(FoodBooking.id.desc()).all()
+    fb_records = FoodBooking.query.options(defer(FoodBooking.payment_proof)).order_by(FoodBooking.id.desc()).all()
     food_bookings = []
     for fb in fb_records:
         price_val = float(fb.total_price or 0)
@@ -1179,6 +1377,7 @@ def build_dashboard_context():
                     'status': fb.status
                 })
 
+        has_fb_proof = fb.id in food_proof_ids
         food_bookings.append({
             'id': fb.id,
             'reference_code': f"MF-FD-{fb.id:04d}",
@@ -1198,8 +1397,9 @@ def build_dashboard_context():
             'amount_paid': f"{paid_val:,.2f}",
             'amount_paid_raw': paid_val,
             'payment_ref': fb.payment_ref or '',
-            'payment_proof': fb.payment_proof or '',
-            'has_payment_proof': bool(fb.payment_proof),
+            'payment_proof': f"/api/bookings/proof/food/{fb.id}" if has_fb_proof else '',
+            'payment_proof_url': f"/api/bookings/proof/food/{fb.id}" if has_fb_proof else '',
+            'has_payment_proof': has_fb_proof,
             'handled_by': fb.handled_by or '—',
             'updated_at_ph': fb.updated_at_ph or '—',
             'notes': fb.notes or '',
@@ -1215,7 +1415,7 @@ def build_dashboard_context():
         'price_per_night': r.price_per_night,
         'price_formatted': f"{r.price_per_night:,.2f}",
         'description': r.description or '',
-        'image_url': r.image_url or '',
+        'image_url': _media_url_or_raw(r.image_url, f"/api/media/room/{r.id}"),
         'is_active': r.is_active
     } for r in all_rooms]
 
@@ -1227,7 +1427,7 @@ def build_dashboard_context():
         'price': m.price,
         'price_formatted': f"{m.price:,.2f}",
         'description': m.description or '',
-        'image_url': m.image_url or '',
+        'image_url': _media_url_or_raw(m.image_url, f"/api/media/menu/{m.id}"),
         'is_available': m.is_available
     } for m in all_menu]
 
@@ -1314,7 +1514,7 @@ def build_dashboard_context():
 
     return {
         'stats': stats,
-        'settings': get_site_settings(),
+        'settings': get_public_settings(),
         'room_bookings': room_bookings,
         'food_bookings': food_bookings,
         'rooms_list': rooms_list,
@@ -1572,10 +1772,23 @@ def monitor_summary_api():
         return jsonify({'error': 'Unauthorized'}), 401
     if not ensure_cashier_still_on_duty():
         return jsonify({'error': 'Duty access revoked by Admin/Owner.'}), 403
-    ctx = build_dashboard_context()
+    pending_rm = RoomBooking.query.filter_by(status='pending').count()
+    pending_fd = FoodBooking.query.filter_by(status='pending').count()
+    recent_logs = AuditLog.query.order_by(AuditLog.id.desc()).limit(10).all()
     return jsonify({
-        'stats': ctx['stats'],
-        'latest_audit': ctx['audit_logs'][:10]
+        'stats': {
+            'pending_count': pending_rm + pending_fd,
+            'ph_time_now': now_ph_str()
+        },
+        'latest_audit': [{
+            'id': log.id,
+            'timestamp_ph': log.timestamp_ph,
+            'actor_role': log.actor_role,
+            'actor_name': log.actor_name,
+            'action_type': log.action_type,
+            'reference_code': log.reference_code,
+            'details': log.details
+        } for log in recent_logs]
     })
 
 
@@ -1643,7 +1856,8 @@ def save_room():
         room.capacity = capacity
         room.price_per_night = price
         room.description = description
-        room.image_url = image_url
+        if not image_url.startswith('/api/media/'):
+            room.image_url = image_url
         action_desc = f"Updated Room {room_number} ({room_type}) — Price: ₱{price:,.2f}/night"
     else:
         existing = Room.query.filter_by(room_number=room_number).first()
@@ -1655,13 +1869,14 @@ def save_room():
             capacity=capacity,
             price_per_night=price,
             description=description,
-            image_url=image_url,
+            image_url='' if image_url.startswith('/api/media/') else image_url,
             is_active=True
         )
         db.session.add(room)
         action_desc = f"Added new Room {room_number} ({room_type}) — Price: ₱{price:,.2f}/night"
 
     db.session.commit()
+    invalidate_public_cache()
     record_audit(actor_role, actor_name, 'ROOM_INVENTORY_UPDATE', f"RM-{room_number}", action_desc)
     return jsonify({'message': 'Room saved successfully!', 'id': room.id})
 
@@ -1674,6 +1889,7 @@ def toggle_room(room_id):
     if room:
         room.is_active = not room.is_active
         db.session.commit()
+        invalidate_public_cache()
         actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
         record_audit(actor_role, session.get('staff_name', actor_role), 'ROOM_STATUS_TOGGLE', f"RM-{room.room_number}", f"Room {room.room_number} set to {'AVAILABLE' if room.is_active else 'MAINTENANCE'}")
     return redirect(url_for('admin', _anchor='inventorySection'))
@@ -1706,7 +1922,8 @@ def save_menu_item():
         food.category = category
         food.price = price
         food.description = description
-        food.image_url = image_url
+        if not image_url.startswith('/api/media/'):
+            food.image_url = image_url
         action_desc = f"Updated Food Menu: {name} ({category}) — ₱{price:,.2f}"
     else:
         food = MenuItem(
@@ -1714,13 +1931,14 @@ def save_menu_item():
             category=category,
             price=price,
             description=description,
-            image_url=image_url,
+            image_url='' if image_url.startswith('/api/media/') else image_url,
             is_available=True
         )
         db.session.add(food)
         action_desc = f"Added new Food Menu: {name} ({category}) — ₱{price:,.2f}"
 
     db.session.commit()
+    invalidate_public_cache()
     record_audit(actor_role, actor_name, 'FOOD_MENU_UPDATE', f"MENU-{food.id}", action_desc)
     return jsonify({'message': 'Food menu item saved successfully!', 'id': food.id})
 
@@ -1733,6 +1951,7 @@ def toggle_menu_item(item_id):
     if food:
         food.is_available = not food.is_available
         db.session.commit()
+        invalidate_public_cache()
         actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
         record_audit(actor_role, session.get('staff_name', actor_role), 'FOOD_STATUS_TOGGLE', f"MENU-{food.id}", f"Food '{food.name}' set to {'AVAILABLE' if food.is_available else 'SOLD OUT'}")
     return redirect(url_for('admin', _anchor='inventorySection'))
@@ -1747,6 +1966,7 @@ def delete_menu_item(item_id):
         fname = food.name
         db.session.delete(food)
         db.session.commit()
+        invalidate_public_cache()
         actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
         record_audit(actor_role, session.get('staff_name', actor_role), 'FOOD_MENU_DELETE', f"MENU-{item_id}", f"Deleted '{fname}' from Food Menu")
     return redirect(url_for('admin', _anchor='inventorySection'))
@@ -1761,6 +1981,8 @@ def save_site_settings():
     for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number', 'gcash_qr_image', 'address', 'contact_email'):
         if key in payload:
             raw_val = (payload.get(key) or '').strip()
+            if key in ('hero_image', 'dining_image', 'gcash_qr_image') and raw_val.startswith('/api/media/'):
+                continue
             val = sanitize_payment_proof(raw_val) if key == 'gcash_qr_image' else raw_val
             if val is None:
                 return jsonify({'error': 'GCash QR image is too large. Please upload a smaller image.'}), 400
@@ -1770,6 +1992,7 @@ def save_site_settings():
             else:
                 db.session.add(SiteSetting(key=key, value=val))
     db.session.commit()
+    invalidate_public_cache()
     actor_role = 'OWNER' if session.get('is_owner') else 'ADMIN'
     record_audit(actor_role, session.get('staff_name', actor_role), 'SITE_SETTINGS_UPDATE', '', 'Updated website banner pictures & MoonFlower Garden Camiguin settings.')
     return jsonify({'message': 'Site photos & settings updated!'})
