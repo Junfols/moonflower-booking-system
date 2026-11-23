@@ -5,6 +5,7 @@ import io
 import json
 import time
 import threading
+import importlib.util
 import urllib.request
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from datetime import datetime, date, timezone, timedelta
@@ -19,24 +20,34 @@ _DB_CONFIG_WARNING = None
 
 def redact_db_error(err):
     msg = str(err)
-    return re.sub(r'(postgres(?:ql)?://[^:@/\s]+):([^@/\s]+)@', r'\1:***@', msg)[:280]
+    return re.sub(r'(postgres(?:ql)?(?:\+[a-z0-9_]+)?://[^:@/\s]+):([^@/\s]+)@', r'\1:***@', msg)[:280]
+
+
+def resolve_postgres_scheme():
+    if importlib.util.find_spec('psycopg') is not None:
+        return 'postgresql+psycopg'
+    if importlib.util.find_spec('psycopg2') is not None:
+        return 'postgresql+psycopg2'
+    return None
 
 
 def normalize_database_url(raw_url='', is_vercel=False):
     global _DB_CONFIG_WARNING
+    fallback_sqlite = 'sqlite:////tmp/moonflower_booking.db' if is_vercel else 'sqlite:///moonflower_booking.db'
     db_url = (raw_url or '').strip()
     if not db_url:
-        return 'sqlite:////tmp/moonflower_booking.db' if is_vercel else 'sqlite:///moonflower_booking.db'
+        return fallback_sqlite
 
     # Handle accidental copy-paste of "psql 'postgresql://...'" or "DATABASE_URL=..."
-    pg_match = re.search(r'(postgres(?:ql)?://[^\s\'"]+)', db_url)
+    pg_match = re.search(r'(postgres(?:ql)?(?:\+[a-z0-9_]+)?://[^\s\'"]+)', db_url)
     if pg_match:
         db_url = pg_match.group(1)
 
-    if db_url.startswith('postgres://'):
-        db_url = db_url.replace('postgres://', 'postgresql://', 1)
-
-    if db_url.startswith('postgresql://'):
+    if db_url.startswith(('postgres://', 'postgresql://', 'postgresql+')):
+        scheme_override = resolve_postgres_scheme()
+        if not scheme_override:
+            _DB_CONFIG_WARNING = 'PostgreSQL driver (psycopg / psycopg2) not installed. Falling back to SQLite.'
+            return fallback_sqlite
         try:
             parts = urlsplit(db_url)
             disallowed_params = {'supa', 'pgbouncer', 'schema', 'connection_limit', 'pool_timeout'}
@@ -45,13 +56,13 @@ def normalize_database_url(raw_url='', is_vercel=False):
             host = (parts.hostname or '').lower()
             if 'sslmode' not in param_keys and host not in ('localhost', '127.0.0.1', '::1'):
                 params.append(('sslmode', 'require'))
-            db_url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
+            db_url = urlunsplit((scheme_override, parts.netloc, parts.path, urlencode(params), parts.fragment))
         except Exception as exc:
             _DB_CONFIG_WARNING = redact_db_error(exc)
-            return 'sqlite:////tmp/moonflower_booking.db' if is_vercel else 'sqlite:///moonflower_booking.db'
+            return fallback_sqlite
     elif not db_url.startswith('sqlite:///'):
         _DB_CONFIG_WARNING = 'Unrecognized DATABASE_URL format (expected postgresql://...). Falling back to SQLite.'
-        return 'sqlite:////tmp/moonflower_booking.db' if is_vercel else 'sqlite:///moonflower_booking.db'
+        return fallback_sqlite
 
     return db_url
 
@@ -65,7 +76,7 @@ _raw_db_url = (
     or ''
 )
 _db_url = normalize_database_url(_raw_db_url, is_vercel=_IS_VERCEL)
-_IS_POSTGRES = _db_url.startswith('postgresql://')
+_IS_POSTGRES = _db_url.startswith('postgresql')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -90,7 +101,14 @@ def now_ph_str():
     return datetime.now(PH_TZ).strftime('%Y-%m-%d %I:%M %p PHT')
 
 
-db = SQLAlchemy(app)
+try:
+    db = SQLAlchemy(app)
+except Exception as _sa_exc:
+    _DB_CONFIG_WARNING = redact_db_error(_sa_exc)
+    _IS_POSTGRES = False
+    app.config.pop('SQLALCHEMY_ENGINE_OPTIONS', None)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/moonflower_booking.db' if _IS_VERCEL else 'sqlite:///moonflower_booking.db'
+    db = SQLAlchemy(app)
 
 
 # MODELS
