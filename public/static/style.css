@@ -949,10 +949,11 @@ body {
   body * {
     visibility: hidden;
   }
-  #receiptModalCard, #receiptModalCard * {
+  #receiptModalCard, #receiptModalCard *,
+  #kitchenSlipCard, #kitchenSlipCard * {
     visibility: visible;
   }
-  #receiptModalCard {
+  #receiptModalCard, #kitchenSlipCard {
     position: absolute;
     left: 0;
     top: 0;
@@ -963,6 +964,42 @@ body {
   .no-print {
     display: none !important;
   }
+}
+
+.table-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+}
+
+.table-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.76rem;
+  text-align: left;
+  transition: all 140ms ease;
+}
+
+.table-slot-btn:hover {
+  border-color: var(--brand-primary);
+}
+
+.table-slot-btn.is-selected {
+  border: 2px solid var(--brand-primary);
+  background: var(--brand-primary-light);
+}
+
+.table-slot-btn.is-occupied {
+  background: var(--status-pending-bg);
+  border-color: var(--status-pending-border);
 }
 
 /* Automatically hide Install App button when already running inside installed PWA */

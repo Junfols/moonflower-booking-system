@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moonflower-pwa-v3';
+const CACHE_NAME = 'moonflower-pwa-v4';
 const STATIC_ASSETS = [
   '/static/style.css',
   '/static/manifest.json',

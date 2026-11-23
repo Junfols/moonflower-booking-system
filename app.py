@@ -178,6 +178,7 @@ class RoomBooking(db.Model):
     payment_method = db.Column(db.String(40), default='GCash')
     amount_paid = db.Column(db.Float, default=0.0)
     payment_ref = db.Column(db.String(100), default='')
+    payment_proof = db.Column(db.Text, default='')
     handled_by = db.Column(db.String(100), default='')
     updated_at_ph = db.Column(db.String(40), default='')
 
@@ -214,6 +215,7 @@ class FoodBooking(db.Model):
     payment_method = db.Column(db.String(40), default='GCash')
     amount_paid = db.Column(db.Float, default=0.0)
     payment_ref = db.Column(db.String(100), default='')
+    payment_proof = db.Column(db.Text, default='')
     handled_by = db.Column(db.String(100), default='')
     updated_at_ph = db.Column(db.String(40), default='')
 
@@ -225,6 +227,7 @@ DEFAULT_SITE_SETTINGS = {
     'dining_image': '',
     'contact_phone': '0997-992-2352 / +63 960 572 3635',
     'gcash_number': '0997-992-2352 (MoonFlower Garden)',
+    'gcash_qr_image': '',
     'address': 'Baylao, Mambajao, Camiguin 9100, Philippines',
     'contact_email': 'moonflowergarden2021@gmail.com'
 }
@@ -337,9 +340,11 @@ def ensure_schema_columns():
         ('room_bookings', 'payment_method', "VARCHAR(40) DEFAULT 'GCash'"),
         ('room_bookings', 'amount_paid', "FLOAT DEFAULT 0.0"),
         ('room_bookings', 'payment_ref', "VARCHAR(100) DEFAULT ''"),
+        ('room_bookings', 'payment_proof', "TEXT DEFAULT ''"),
         ('room_bookings', 'handled_by', "VARCHAR(100) DEFAULT ''"),
         ('room_bookings', 'updated_at_ph', "VARCHAR(40) DEFAULT ''"),
         ('food_bookings', 'seating_area', "VARCHAR(60) DEFAULT 'Dine-in (Indoor)'"),
+        ('food_bookings', 'payment_proof', "TEXT DEFAULT ''"),
     ]
 
     for table_name, col_name, col_def in migrations:
@@ -675,6 +680,17 @@ def get_available_rooms():
     return jsonify(data)
 
 
+def sanitize_payment_proof(raw_val):
+    val = (raw_val or '').strip()
+    if not val:
+        return ''
+    if len(val) > 2_500_000:
+        return None
+    if not val.startswith(('data:image/', 'http://', 'https://')):
+        return ''
+    return val
+
+
 @app.route('/api/rooms/book', methods=['POST'])
 def book_room():
     payload = request.json or {}
@@ -684,6 +700,9 @@ def book_room():
     notes = (payload.get('notes') or '').strip()
     payment_method = (payload.get('payment_method') or 'GCash').strip()
     payment_ref = (payload.get('payment_ref') or '').strip()
+    payment_proof = sanitize_payment_proof(payload.get('payment_proof'))
+    if payment_proof is None:
+        return jsonify({'error': 'Payment proof screenshot is too large. Please upload a smaller image.'}), 400
     check_in_str = payload.get('check_in')
     check_out_str = payload.get('check_out')
 
@@ -727,6 +746,7 @@ def book_room():
         payment_method=payment_method,
         amount_paid=0.0,
         payment_ref=payment_ref,
+        payment_proof=payment_proof,
         handled_by='Online Request',
         updated_at_ph=ts_ph
     )
@@ -734,12 +754,13 @@ def book_room():
     db.session.commit()
 
     ref_code = f"MF-RM-{new_booking.id:04d}"
+    proof_note = ' | Screenshot Proof Attached' if payment_proof else ''
     record_audit(
         'CUSTOMER',
         name,
         'NEW_ROOM_BOOKING',
         ref_code,
-        f"Online booking for Room {room.room_number} ({check_in_str} to {check_out_str}), Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}"
+        f"Online booking for Room {room.room_number} ({check_in_str} to {check_out_str}), Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}{proof_note}"
     )
 
     return jsonify({
@@ -756,6 +777,7 @@ def book_room():
         'total_price': total_price,
         'payment_method': payment_method,
         'payment_ref': payment_ref,
+        'has_payment_proof': bool(payment_proof),
         'notes': notes,
         'status': 'PENDING'
     }), 201
@@ -775,6 +797,9 @@ def book_food():
     notes = (payload.get('notes') or '').strip()
     payment_method = (payload.get('payment_method') or 'GCash').strip()
     payment_ref = (payload.get('payment_ref') or '').strip()
+    payment_proof = sanitize_payment_proof(payload.get('payment_proof'))
+    if payment_proof is None:
+        return jsonify({'error': 'Payment proof screenshot is too large. Please upload a smaller image.'}), 400
 
     if not name or not phone or not date_str or not items:
         return jsonify({'error': 'Please select food items from the menu and enter your name and phone number.'}), 400
@@ -828,6 +853,7 @@ def book_food():
         payment_method=payment_method,
         amount_paid=0.0,
         payment_ref=payment_ref,
+        payment_proof=payment_proof,
         handled_by='Online Request',
         updated_at_ph=ts_ph
     )
@@ -835,12 +861,13 @@ def book_food():
     db.session.commit()
 
     ref_code = f"MF-FD-{new_food_booking.id:04d}"
+    proof_note = ' | Screenshot Proof Attached' if payment_proof else ''
     record_audit(
         'CUSTOMER',
         name,
         'NEW_FOOD_BOOKING',
         ref_code,
-        f"Food Booking ({order_summary_str}) for {pax} Guests ({seating_area}: Table + {pax} Chairs) on {date_str} ({arrival_time}) — Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}"
+        f"Food Booking ({order_summary_str}) for {pax} Guests ({seating_area}: Table + {pax} Chairs) on {date_str} ({arrival_time}) — Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}{proof_note}"
     )
 
     return jsonify({
@@ -858,6 +885,7 @@ def book_food():
         'total_price': total_price,
         'payment_method': payment_method,
         'payment_ref': payment_ref,
+        'has_payment_proof': bool(payment_proof),
         'notes': notes,
         'status': 'PENDING'
     }), 201
@@ -911,6 +939,7 @@ def lookup_bookings():
                 'payment_status': (b.payment_status or 'unpaid').upper(),
                 'payment_method': b.payment_method or 'GCash',
                 'amount_paid': f"₱{float(b.amount_paid or 0):,.2f}",
+                'has_payment_proof': bool(b.payment_proof),
                 'handled_by': b.handled_by or 'Pending Review',
                 'updated_at_ph': b.updated_at_ph or '',
                 'notes': b.notes or '',
@@ -948,6 +977,7 @@ def lookup_bookings():
                 'payment_status': (fb.payment_status or 'unpaid').upper(),
                 'payment_method': fb.payment_method or 'GCash',
                 'amount_paid': f"₱{float(fb.amount_paid or 0):,.2f}",
+                'has_payment_proof': bool(fb.payment_proof),
                 'handled_by': fb.handled_by or 'Pending Review',
                 'updated_at_ph': fb.updated_at_ph or '',
                 'notes': fb.notes or '',
@@ -961,6 +991,53 @@ def lookup_bookings():
 # SHARED DATA BUILDER FOR CASHIER, ADMIN & OVERSEAS OWNER
 # ==========================================
 def build_dashboard_context():
+    ph_today = datetime.now(PH_TZ).date()
+    week_start = ph_today - timedelta(days=6)
+    month_start = ph_today.replace(day=1)
+    reserved_tables_by_date = {}
+
+    def _parse_ph_record_date(updated_str, fallback_date=None):
+        raw = str(updated_str or '').strip()[:10]
+        if len(raw) == 10 and raw[4] == '-' and raw[7] == '-':
+            try:
+                return datetime.strptime(raw, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        if isinstance(fallback_date, datetime):
+            return fallback_date.date()
+        if fallback_date is not None and hasattr(fallback_date, 'year'):
+            return fallback_date
+        return ph_today
+
+    def _new_bucket():
+        return {
+            'room_confirmed': 0.0,
+            'food_confirmed': 0.0,
+            'confirmed_total': 0.0,
+            'cash_collected': 0.0,
+            'digital_collected': 0.0,
+            'total_collected': 0.0,
+            'bookings_count': 0,
+            'dish_totals': {}
+        }
+
+    analytics_raw = {
+        'today': _new_bucket(),
+        'week': _new_bucket(),
+        'month': _new_bucket(),
+        'all': _new_bucket()
+    }
+
+    def _matching_periods(d):
+        keys = ['all']
+        if d == ph_today:
+            keys.append('today')
+        if week_start <= d <= ph_today:
+            keys.append('week')
+        if month_start <= d <= ph_today:
+            keys.append('month')
+        return keys
+
     rb_records = db.session.query(RoomBooking, Room).join(Room, RoomBooking.room_id == Room.id).order_by(RoomBooking.id.desc()).all()
     room_bookings = []
     confirmed_revenue = 0.0
@@ -977,7 +1054,8 @@ def build_dashboard_context():
         total_collected += paid_val
 
         method_lower = (b.payment_method or '').lower()
-        if 'gcash' in method_lower or 'maya' in method_lower or 'bank' in method_lower:
+        is_digital = ('gcash' in method_lower or 'maya' in method_lower or 'bank' in method_lower)
+        if is_digital:
             digital_collected += paid_val
         else:
             cash_collected += paid_val
@@ -988,6 +1066,21 @@ def build_dashboard_context():
         elif b.status == 'pending':
             pending_revenue += price_val
             pending_count += 1
+
+        rec_date = _parse_ph_record_date(b.updated_at_ph, b.check_in_date)
+        for pkey in _matching_periods(rec_date):
+            bucket = analytics_raw[pkey]
+            if b.status != 'cancelled':
+                bucket['bookings_count'] += 1
+                if paid_val > 0:
+                    bucket['total_collected'] += paid_val
+                    if is_digital:
+                        bucket['digital_collected'] += paid_val
+                    else:
+                        bucket['cash_collected'] += paid_val
+            if b.status in ('confirmed', 'completed'):
+                bucket['room_confirmed'] += price_val
+                bucket['confirmed_total'] += price_val
 
         room_bookings.append({
             'id': b.id,
@@ -1005,6 +1098,8 @@ def build_dashboard_context():
             'amount_paid': f"{paid_val:,.2f}",
             'amount_paid_raw': paid_val,
             'payment_ref': b.payment_ref or '',
+            'payment_proof': b.payment_proof or '',
+            'has_payment_proof': bool(b.payment_proof),
             'handled_by': b.handled_by or '—',
             'updated_at_ph': b.updated_at_ph or '—',
             'notes': b.notes or '',
@@ -1018,7 +1113,8 @@ def build_dashboard_context():
         paid_val = float(fb.amount_paid or 0)
         total_collected += paid_val
         method_lower = (fb.payment_method or '').lower()
-        if 'gcash' in method_lower or 'maya' in method_lower or 'bank' in method_lower:
+        is_digital = ('gcash' in method_lower or 'maya' in method_lower or 'bank' in method_lower)
+        if is_digital:
             digital_collected += paid_val
         else:
             cash_collected += paid_val
@@ -1029,6 +1125,59 @@ def build_dashboard_context():
         elif fb.status == 'pending':
             pending_revenue += price_val
             pending_count += 1
+
+        try:
+            parsed_items = json.loads(fb.order_items_json or '[]')
+            if not isinstance(parsed_items, list):
+                parsed_items = []
+        except Exception:
+            parsed_items = []
+
+        rec_date = _parse_ph_record_date(fb.updated_at_ph, fb.booking_date)
+        for pkey in _matching_periods(rec_date):
+            bucket = analytics_raw[pkey]
+            if fb.status != 'cancelled':
+                bucket['bookings_count'] += 1
+                if paid_val > 0:
+                    bucket['total_collected'] += paid_val
+                    if is_digital:
+                        bucket['digital_collected'] += paid_val
+                    else:
+                        bucket['cash_collected'] += paid_val
+                for item in parsed_items:
+                    if not isinstance(item, dict):
+                        continue
+                    dish_name = str(item.get('name') or '').strip()
+                    if not dish_name:
+                        continue
+                    try:
+                        qty = max(1, int(item.get('qty') or 1))
+                    except (TypeError, ValueError):
+                        qty = 1
+                    try:
+                        unit_price = float(item.get('price') or 0)
+                    except (TypeError, ValueError):
+                        unit_price = 0.0
+                    d_entry = bucket['dish_totals'].setdefault(dish_name, {'name': dish_name, 'qty': 0, 'revenue': 0.0})
+                    d_entry['qty'] += qty
+                    d_entry['revenue'] += unit_price * qty
+            if fb.status in ('confirmed', 'completed'):
+                bucket['food_confirmed'] += price_val
+                bucket['confirmed_total'] += price_val
+
+        assigned_raw = (fb.assigned_table or '').strip()
+        if fb.status in ('pending', 'confirmed') and assigned_raw and 'pending staff assignment' not in assigned_raw.lower():
+            table_slot = assigned_raw.split('—')[0].split(' - ')[0].strip()
+            if table_slot:
+                dkey = str(fb.booking_date)
+                reserved_tables_by_date.setdefault(dkey, []).append({
+                    'table': table_slot,
+                    'ref': f"MF-FD-{fb.id:04d}",
+                    'arrival_time': fb.arrival_time or '',
+                    'pax': fb.pax,
+                    'customer_name': fb.customer_name,
+                    'status': fb.status
+                })
 
         food_bookings.append({
             'id': fb.id,
@@ -1041,6 +1190,7 @@ def build_dashboard_context():
             'seating_area': fb.seating_area or 'Dine-in (Indoor)',
             'assigned_table': fb.assigned_table or f"{fb.seating_area or 'Dine-in'} — 1 Table + {fb.pax} Chairs",
             'order_summary': fb.order_summary,
+            'order_items': parsed_items,
             'total_price': f"{price_val:,.2f}",
             'total_price_raw': price_val,
             'payment_status': fb.payment_status or 'unpaid',
@@ -1048,6 +1198,8 @@ def build_dashboard_context():
             'amount_paid': f"{paid_val:,.2f}",
             'amount_paid_raw': paid_val,
             'payment_ref': fb.payment_ref or '',
+            'payment_proof': fb.payment_proof or '',
+            'has_payment_proof': bool(fb.payment_proof),
             'handled_by': fb.handled_by or '—',
             'updated_at_ph': fb.updated_at_ph or '—',
             'notes': fb.notes or '',
@@ -1103,6 +1255,30 @@ def build_dashboard_context():
 
     collectible_balance = max(0.0, confirmed_revenue - total_collected)
 
+    sales_analytics = {}
+    for pkey, raw_b in analytics_raw.items():
+        sorted_dishes = sorted(
+            raw_b['dish_totals'].values(),
+            key=lambda x: (-x['qty'], -x['revenue'], x['name'])
+        )[:8]
+        sales_analytics[pkey] = {
+            'room_confirmed': f"{raw_b['room_confirmed']:,.2f}",
+            'food_confirmed': f"{raw_b['food_confirmed']:,.2f}",
+            'confirmed_total': f"{raw_b['confirmed_total']:,.2f}",
+            'cash_collected': f"{raw_b['cash_collected']:,.2f}",
+            'digital_collected': f"{raw_b['digital_collected']:,.2f}",
+            'total_collected': f"{raw_b['total_collected']:,.2f}",
+            'bookings_count': raw_b['bookings_count'],
+            'top_dishes': [
+                {
+                    'name': d['name'],
+                    'qty': d['qty'],
+                    'revenue': f"{d['revenue']:,.2f}"
+                }
+                for d in sorted_dishes
+            ]
+        }
+
     stats = {
         'confirmed_revenue': f"{confirmed_revenue:,.2f}",
         'pending_revenue': f"{pending_revenue:,.2f}",
@@ -1144,7 +1320,9 @@ def build_dashboard_context():
         'rooms_list': rooms_list,
         'menu_list': menu_list,
         'staff_list': staff_list,
-        'audit_logs': audit_logs
+        'audit_logs': audit_logs,
+        'reserved_tables_by_date': reserved_tables_by_date,
+        'sales_analytics': sales_analytics
     }
 
 
@@ -1580,9 +1758,12 @@ def save_site_settings():
         return jsonify({'error': 'Unauthorized'}), 401
 
     payload = request.json or {}
-    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number', 'address', 'contact_email'):
+    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number', 'gcash_qr_image', 'address', 'contact_email'):
         if key in payload:
-            val = (payload.get(key) or '').strip()
+            raw_val = (payload.get(key) or '').strip()
+            val = sanitize_payment_proof(raw_val) if key == 'gcash_qr_image' else raw_val
+            if val is None:
+                return jsonify({'error': 'GCash QR image is too large. Please upload a smaller image.'}), 400
             setting = db.session.get(SiteSetting, key)
             if setting:
                 setting.value = val
