@@ -968,22 +968,18 @@
                 const hasPhoto = Boolean(item.image_url && item.image_url.trim() !== '');
                 const mediaHtml = hasPhoto
                     ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" class="room-card-img">`
-                    : `<div style="width:100%; height:100%; background: linear-gradient(135deg, #9C6621, #6E4514); display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(255,255,255,0.9); padding:1rem; text-align:center;">
-                            <i class="fa-solid fa-bowl-food" style="font-size:2rem; margin-bottom:0.45rem; color:#F4DAA4;"></i>
-                            <span style="font-family:var(--font-display); font-size:1.15rem;">${escapeHtml(item.name)}</span>
+                    : `<div style="width:100%; height:100%; background: linear-gradient(145deg, #2D261E 0%, #4A3928 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(255,255,255,0.92); padding:1.25rem; text-align:center;">
+                            <i class="fa-solid fa-bowl-food" style="font-size:1.85rem; margin-bottom:0.5rem; color:#F2D49C;"></i>
+                            <span style="font-family:var(--font-display); font-size:1.18rem; letter-spacing:-0.01em;">${escapeHtml(item.name)}</span>
                        </div>`;
 
                 const card = document.createElement('article');
-                card.className = 'room-card';
-                if (isSelected) {
-                    card.style.border = '2px solid var(--brand-accent)';
-                    card.style.boxShadow = '0 8px 24px -4px rgba(182, 123, 46, 0.2)';
-                }
+                card.className = isSelected ? 'room-card is-food-selected' : 'room-card';
 
                 card.innerHTML = `
-                    <div class="room-card-media" style="height: 185px; cursor: pointer;" onclick="toggleFoodSelect(${item.id})">
+                    <div class="room-card-media" style="height: 188px; cursor: pointer;" onclick="toggleFoodSelect(${item.id})">
                         ${mediaHtml}
-                        <span class="room-badge-top" style="background: rgba(156, 102, 33, 0.92);">${escapeHtml(item.category)}</span>
+                        <span class="room-badge-top" style="background: rgba(156, 97, 27, 0.88);">${escapeHtml(item.category)}</span>
                         <span class="room-capacity-pill" style="${isSelected ? 'background: var(--brand-accent); color: #fff;' : ''}">
                             <i class="fa-${isSelected ? 'solid fa-square-check' : 'regular fa-square'}" style="margin-right:4px;"></i>
                             ${isSelected ? `Selected (${qty})` : 'Select'}

@@ -201,7 +201,9 @@
                             <div class="kpi-value" id="anaConfirmedTotal" style="color: var(--brand-primary);">₱{{ sales_analytics.today.confirmed_total }}</div>
                             <div class="kpi-sub" id="anaConfirmedSplit">Rooms: ₱{{ sales_analytics.today.room_confirmed }} &bull; Dining: ₱{{ sales_analytics.today.food_confirmed }}</div>
                         </div>
-                        <i class="fa-solid fa-coins kpi-icon"></i>
+                        <div class="kpi-icon" style="background: var(--status-confirmed-bg); color: var(--status-confirmed-text);">
+                            <i class="fa-solid fa-coins"></i>
+                        </div>
                     </div>
                     <div class="kpi-card">
                         <div>
@@ -209,7 +211,9 @@
                             <div class="kpi-value" id="anaCashCollected" style="color: var(--status-confirmed-text);">₱{{ sales_analytics.today.cash_collected }}</div>
                             <div class="kpi-sub">Front Desk Cash drawer</div>
                         </div>
-                        <i class="fa-solid fa-money-bill-wave kpi-icon"></i>
+                        <div class="kpi-icon" style="background: var(--brand-primary-light); color: var(--brand-primary);">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                        </div>
                     </div>
                     <div class="kpi-card">
                         <div>
@@ -217,7 +221,9 @@
                             <div class="kpi-value" id="anaDigitalCollected" style="color: var(--brand-accent);">₱{{ sales_analytics.today.digital_collected }}</div>
                             <div class="kpi-sub" id="anaTotalCollectedSub">Total Collected: ₱{{ sales_analytics.today.total_collected }}</div>
                         </div>
-                        <i class="fa-solid fa-mobile-screen-button kpi-icon"></i>
+                        <div class="kpi-icon" style="background: var(--brand-accent-light); color: var(--brand-accent);">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                        </div>
                     </div>
                     <div class="kpi-card">
                         <div>
@@ -225,7 +231,9 @@
                             <div class="kpi-value" id="anaBookingsCount">{{ sales_analytics.today.bookings_count }}</div>
                             <div class="kpi-sub">Non-cancelled room &amp; food bookings</div>
                         </div>
-                        <i class="fa-solid fa-receipt kpi-icon"></i>
+                        <div class="kpi-icon" style="background: var(--status-completed-bg); color: var(--status-completed-text);">
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
                     </div>
                 </div>
 
