@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import io
 import json
@@ -13,23 +14,45 @@ from sqlalchemy import inspect, text, or_
 
 _IS_VERCEL = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'))
 _PLATFORM_NAME = 'Vercel' if _IS_VERCEL else ('Render' if (os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_URL')) else 'Local / Custom')
+_DB_CONFIG_WARNING = None
+
+
+def redact_db_error(err):
+    msg = str(err)
+    return re.sub(r'(postgres(?:ql)?://[^:@/\s]+):([^@/\s]+)@', r'\1:***@', msg)[:280]
 
 
 def normalize_database_url(raw_url='', is_vercel=False):
+    global _DB_CONFIG_WARNING
     db_url = (raw_url or '').strip()
     if not db_url:
         return 'sqlite:////tmp/moonflower_booking.db' if is_vercel else 'sqlite:///moonflower_booking.db'
+
+    # Handle accidental copy-paste of "psql 'postgresql://...'" or "DATABASE_URL=..."
+    pg_match = re.search(r'(postgres(?:ql)?://[^\s\'"]+)', db_url)
+    if pg_match:
+        db_url = pg_match.group(1)
+
     if db_url.startswith('postgres://'):
         db_url = db_url.replace('postgres://', 'postgresql://', 1)
+
     if db_url.startswith('postgresql://'):
-        parts = urlsplit(db_url)
-        disallowed_params = {'supa', 'pgbouncer', 'schema', 'connection_limit', 'pool_timeout'}
-        params = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k.lower() not in disallowed_params]
-        param_keys = {k.lower() for k, _ in params}
-        host = (parts.hostname or '').lower()
-        if 'sslmode' not in param_keys and host not in ('localhost', '127.0.0.1', '::1'):
-            params.append(('sslmode', 'require'))
-        db_url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
+        try:
+            parts = urlsplit(db_url)
+            disallowed_params = {'supa', 'pgbouncer', 'schema', 'connection_limit', 'pool_timeout'}
+            params = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k.lower() not in disallowed_params]
+            param_keys = {k.lower() for k, _ in params}
+            host = (parts.hostname or '').lower()
+            if 'sslmode' not in param_keys and host not in ('localhost', '127.0.0.1', '::1'):
+                params.append(('sslmode', 'require'))
+            db_url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
+        except Exception as exc:
+            _DB_CONFIG_WARNING = redact_db_error(exc)
+            return 'sqlite:////tmp/moonflower_booking.db' if is_vercel else 'sqlite:///moonflower_booking.db'
+    elif not db_url.startswith('sqlite:///'):
+        _DB_CONFIG_WARNING = 'Unrecognized DATABASE_URL format (expected postgresql://...). Falling back to SQLite.'
+        return 'sqlite:////tmp/moonflower_booking.db' if is_vercel else 'sqlite:///moonflower_booking.db'
+
     return db_url
 
 
@@ -456,12 +479,48 @@ def _record_monitor_hit(path, method, ua):
         print(f"[KEEPALIVE] {method} {path} from {clean_ua} at {now_ph_str()}", flush=True)
 
 
+_DB_INIT_LOCK = threading.Lock()
+_DB_INIT_DONE = False
+_DB_INIT_ERROR = _DB_CONFIG_WARNING
+
+
+def ensure_db_initialized():
+    global _DB_INIT_DONE, _DB_INIT_ERROR
+    if _DB_INIT_DONE:
+        return True
+    with _DB_INIT_LOCK:
+        if _DB_INIT_DONE:
+            return True
+        try:
+            seed_data_if_empty()
+            _DB_INIT_DONE = True
+            _DB_INIT_ERROR = _DB_CONFIG_WARNING
+            return True
+        except Exception as exc:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            _DB_INIT_ERROR = redact_db_error(exc)
+            print(f"[DB_INIT_ERROR] {_DB_INIT_ERROR}", flush=True)
+            return False
+
+
+@app.before_request
+def _lazy_db_boot():
+    path = request.path or ''
+    if path in ('/health', '/api/health', '/healthz', '/ping', '/manifest.json', '/sw.js') or path.startswith('/static/'):
+        return None
+    ensure_db_initialized()
+    return None
+
+
 @app.route('/health', methods=['GET', 'HEAD'])
 @app.route('/api/health', methods=['GET', 'HEAD'])
 @app.route('/healthz', methods=['GET', 'HEAD'])
 @app.route('/ping', methods=['GET', 'HEAD'])
 def health_check():
-    """Lightweight health check endpoint for uptime monitors and Render keep-alive."""
+    """Lightweight health check endpoint for uptime monitors and diagnostics."""
     _record_monitor_hit(request.path, request.method, request.headers.get('User-Agent', ''))
     if request.method == 'HEAD':
         return Response(status=200, headers={'Cache-Control': 'no-store, no-cache'})
@@ -472,20 +531,25 @@ def health_check():
         'service': 'moonflower-booking-system',
         'platform': _PLATFORM_NAME,
         'database': 'PostgreSQL' if _IS_POSTGRES else ('SQLite (/tmp Ephemeral)' if _IS_VERCEL else 'SQLite (Local)'),
+        'db_initialized': _DB_INIT_DONE,
         'ph_time': now_ph_str(),
         'booted_at_ph': _BOOT_TIME_PH,
         'uptime_seconds': int(time.monotonic() - _BOOT_MONOTONIC),
         'last_external_ping': last_hit
     }
+    if _DB_INIT_ERROR:
+        payload['db_init_error'] = _DB_INIT_ERROR
     status_code = 200
     if request.args.get('check_db') == '1':
         try:
+            init_ok = ensure_db_initialized()
             db.session.execute(text('SELECT 1'))
+            payload['db_initialized'] = init_ok
             payload['db_connected'] = True
         except Exception as exc:
             payload['db_connected'] = False
             payload['status'] = 'degraded'
-            payload['db_error'] = str(exc)[:180]
+            payload['db_error'] = redact_db_error(exc)
             status_code = 500
     resp = jsonify(payload)
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -1692,7 +1756,8 @@ def start_render_keepalive():
     thread.start()
 
 
-seed_data_if_empty()
+if not _IS_VERCEL:
+    ensure_db_initialized()
 start_render_keepalive()
 
 if __name__ == '__main__':
