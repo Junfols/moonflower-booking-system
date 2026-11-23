@@ -20,6 +20,48 @@ _IS_VERCEL = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'))
 _PLATFORM_NAME = 'Vercel' if _IS_VERCEL else ('Render' if (os.environ.get('RENDER') or os.environ.get('RENDER_EXTERNAL_URL')) else 'Local / Custom')
 _DB_CONFIG_WARNING = None
 
+_LOGIN_ATTEMPTS_LOCK = threading.Lock()
+_LOGIN_ATTEMPTS = {}
+_LOGIN_MAX_ATTEMPTS = 6
+_LOGIN_WINDOW_SECONDS = 300
+
+
+def _get_client_ip():
+    fwd = (request.headers.get('X-Forwarded-For') or '').strip()
+    if fwd:
+        return fwd.split(',')[0].strip()
+    return (request.remote_addr or 'unknown').strip()
+
+
+def _is_login_rate_limited(scope):
+    key = f"{scope}:{_get_client_ip()}"
+    now_m = time.monotonic()
+    cutoff = now_m - _LOGIN_WINDOW_SECONDS
+    with _LOGIN_ATTEMPTS_LOCK:
+        recent = [ts for ts in _LOGIN_ATTEMPTS.get(key, []) if ts > cutoff]
+        if recent:
+            _LOGIN_ATTEMPTS[key] = recent
+        else:
+            _LOGIN_ATTEMPTS.pop(key, None)
+        return len(recent) >= _LOGIN_MAX_ATTEMPTS
+
+
+def _record_failed_login(scope):
+    key = f"{scope}:{_get_client_ip()}"
+    now_m = time.monotonic()
+    cutoff = now_m - _LOGIN_WINDOW_SECONDS
+    with _LOGIN_ATTEMPTS_LOCK:
+        recent = [ts for ts in _LOGIN_ATTEMPTS.get(key, []) if ts > cutoff]
+        recent.append(now_m)
+        _LOGIN_ATTEMPTS[key] = recent
+        return len(recent) >= _LOGIN_MAX_ATTEMPTS, max(0, _LOGIN_MAX_ATTEMPTS - len(recent))
+
+
+def _clear_login_attempts(scope):
+    key = f"{scope}:{_get_client_ip()}"
+    with _LOGIN_ATTEMPTS_LOCK:
+        _LOGIN_ATTEMPTS.pop(key, None)
+
 
 def redact_db_error(err):
     msg = str(err)
@@ -737,7 +779,7 @@ def get_cached_active_menu():
     return data
 
 
-def query_available_rooms(check_in, check_out, guests=2):
+def query_available_rooms(check_in, check_out, guests=2, include_booked=False):
     all_active = get_cached_active_rooms()
     booked_ids = {
         row[0] for row in db.session.query(RoomBooking.room_id).filter(
@@ -746,7 +788,12 @@ def query_available_rooms(check_in, check_out, guests=2):
             RoomBooking.check_out_date > check_in
         ).all()
     }
-    return [r for r in all_active if r['capacity'] >= guests and r['id'] not in booked_ids]
+    matching = [r for r in all_active if r['capacity'] >= guests]
+    if not include_booked:
+        return [dict(r, is_available_for_dates=True) for r in matching if r['id'] not in booked_ids]
+    available = [dict(r, is_available_for_dates=True) for r in matching if r['id'] not in booked_ids]
+    booked = [dict(r, is_available_for_dates=False) for r in matching if r['id'] in booked_ids]
+    return available + booked
 
 
 @app.route('/api/media/<kind>/<ident>')
@@ -812,7 +859,7 @@ def home():
     today_ph = datetime.now(PH_TZ).date()
     tomorrow_ph = today_ph + timedelta(days=1)
     try:
-        initial_rooms = query_available_rooms(today_ph, tomorrow_ph, guests=2)
+        initial_rooms = query_available_rooms(today_ph, tomorrow_ph, guests=2, include_booked=True)
     except Exception:
         initial_rooms = []
     return render_template(
@@ -843,6 +890,7 @@ def get_available_rooms():
     check_in_str = request.args.get('check_in')
     check_out_str = request.args.get('check_out')
     guests = int(request.args.get('guests', 1) or 1)
+    include_booked = (request.args.get('include_booked') or '').strip().lower() in ('1', 'true', 'yes')
 
     if not check_in_str or not check_out_str:
         return jsonify({'error': 'Please provide both check-in and check-out dates.'}), 400
@@ -856,7 +904,7 @@ def get_available_rooms():
     if check_out <= check_in:
         return jsonify({'error': 'Check-out date must be after check-in date.'}), 400
 
-    return jsonify(query_available_rooms(check_in, check_out, guests))
+    return jsonify(query_available_rooms(check_in, check_out, guests, include_booked=include_booked))
 
 
 def sanitize_payment_proof(raw_val):
@@ -996,7 +1044,9 @@ def book_food():
             continue
         menu_item = db.session.get(MenuItem, item_id)
         if not menu_item:
-            continue
+            return jsonify({'error': f'Menu item #{item_id} is no longer available.'}), 400
+        if not menu_item.is_available:
+            return jsonify({'error': f"Sorry, '{menu_item.name}' is currently sold out."}), 400
         subtotal = menu_item.price * qty
         total_price += subtotal
         order_details.append({
@@ -1072,37 +1122,67 @@ def book_food():
 
 @app.route('/api/bookings/lookup', methods=['GET'])
 def lookup_bookings():
-    """Allows customers to check their Room or Food booking, payment verification, and reserved table/chairs."""
+    """Allows customers to check their Room or Food booking by Reference Code or Mobile Number."""
     q = (request.args.get('q') or '').strip()
     if not q:
-        return jsonify({'error': 'Please enter your Reference Code, Phone Number, or Full Name.'}), 400
+        return jsonify({'error': 'Please enter your Reference Code (e.g. MF-FD-0001) or Mobile Number.'}), 400
 
-    q_upper = q.upper()
-    is_room_ref = q_upper.startswith('MF-RM-')
-    is_food_ref = q_upper.startswith('MF-FD-')
+    q_upper = re.sub(r'\s+', '', q.upper())
+    room_match = re.fullmatch(r'MF-RM-(\d{1,6})', q_upper)
+    food_match = re.fullmatch(r'MF-FD-(\d{1,6})', q_upper)
+    hash_match = re.fullmatch(r'#(\d{1,6})', q_upper)
 
-    clean_num = q_upper.replace('MF-RM-', '').replace('MF-FD-', '').replace('#', '').strip()
-    booking_id = int(clean_num) if clean_num.isdigit() and len(clean_num) <= 6 else None
+    is_room_ref = bool(room_match)
+    is_food_ref = bool(food_match)
+    ref_booking_id = None
+    if room_match:
+        ref_booking_id = int(room_match.group(1))
+    elif food_match:
+        ref_booking_id = int(food_match.group(1))
+    elif hash_match:
+        ref_booking_id = int(hash_match.group(1))
+
+    q_digits = re.sub(r'\D', '', q)
+    has_letters = bool(re.search(r'[a-zA-Z]', q))
+    is_phone_query = (ref_booking_id is None) and (not has_letters) and (len(q_digits) >= 7)
+
+    if ref_booking_id is None and not is_phone_query:
+        return jsonify({
+            'error': 'For your privacy, please enter your exact Reference Code (e.g. MF-FD-0001 or MF-RM-0001) or Mobile Number (at least 7 digits).'
+        }), 400
+
+    def _canon_phone(digits_str):
+        if digits_str.startswith('63') and len(digits_str) == 12:
+            return '0' + digits_str[2:]
+        if digits_str.startswith('9') and len(digits_str) == 10:
+            return '0' + digits_str
+        return digits_str
+
+    def _phone_matches(stored_phone):
+        raw_digits = re.sub(r'\D', '', stored_phone or '')
+        if not raw_digits:
+            return False
+        cs = _canon_phone(raw_digits)
+        cq = _canon_phone(q_digits)
+        if len(cq) >= 10:
+            return cs == cq or (len(cs) >= 10 and cs[-10:] == cq[-10:])
+        return (q_digits in cs) or (q_digits in raw_digits)
 
     results = []
 
     if not is_food_ref:
         rb_query = db.session.query(RoomBooking, Room).join(Room, RoomBooking.room_id == Room.id)
-        if booking_id is not None and not q.startswith('09'):
-            rb_records = rb_query.filter(
-                or_(
-                    RoomBooking.id == booking_id,
-                    RoomBooking.customer_phone.ilike(f"%{q}%"),
-                    RoomBooking.customer_name.ilike(f"%{q}%")
-                )
-            ).order_by(RoomBooking.id.desc()).all()
+        if ref_booking_id is not None:
+            rb_records = rb_query.filter(RoomBooking.id == ref_booking_id).order_by(RoomBooking.id.desc()).all()
         else:
-            rb_records = rb_query.filter(
-                or_(
-                    RoomBooking.customer_phone.ilike(f"%{q}%"),
-                    RoomBooking.customer_name.ilike(f"%{q}%")
-                )
-            ).order_by(RoomBooking.id.desc()).all()
+            candidate_ids = [
+                bid for bid, ph in db.session.query(RoomBooking.id, RoomBooking.customer_phone).all()
+                if _phone_matches(ph)
+            ]
+            rb_records = (
+                rb_query.filter(RoomBooking.id.in_(candidate_ids)).order_by(RoomBooking.id.desc()).all()
+                if candidate_ids else []
+            )
 
         for b, r in rb_records:
             results.append({
@@ -1126,21 +1206,17 @@ def lookup_bookings():
             })
 
     if not is_room_ref:
-        if booking_id is not None and not q.startswith('09'):
-            fb_records = FoodBooking.query.filter(
-                or_(
-                    FoodBooking.id == booking_id,
-                    FoodBooking.customer_phone.ilike(f"%{q}%"),
-                    FoodBooking.customer_name.ilike(f"%{q}%")
-                )
-            ).order_by(FoodBooking.id.desc()).all()
+        if ref_booking_id is not None:
+            fb_records = FoodBooking.query.filter(FoodBooking.id == ref_booking_id).order_by(FoodBooking.id.desc()).all()
         else:
-            fb_records = FoodBooking.query.filter(
-                or_(
-                    FoodBooking.customer_phone.ilike(f"%{q}%"),
-                    FoodBooking.customer_name.ilike(f"%{q}%")
-                )
-            ).order_by(FoodBooking.id.desc()).all()
+            candidate_ids = [
+                fid for fid, ph in db.session.query(FoodBooking.id, FoodBooking.customer_phone).all()
+                if _phone_matches(ph)
+            ]
+            fb_records = (
+                FoodBooking.query.filter(FoodBooking.id.in_(candidate_ids)).order_by(FoodBooking.id.desc()).all()
+                if candidate_ids else []
+            )
 
         for fb in fb_records:
             results.append({
@@ -1556,11 +1632,25 @@ def ensure_cashier_still_on_duty():
 @app.route('/cashier', methods=['GET', 'POST'])
 def cashier_portal():
     if request.method == 'POST':
+        if _is_login_rate_limited('cashier'):
+            return render_template(
+                'cashier.html',
+                error="Too many failed login attempts. Please wait 5 minutes and try again.",
+                authed=False
+            ), 429
+
         username = (request.form.get('username') or '').strip().lower()
         pw = (request.form.get('password') or '').strip()
         staff = StaffAccount.query.filter(db.func.lower(StaffAccount.username) == username).first() if username else None
 
         if not staff or staff.pin_or_password != pw:
+            locked, _ = _record_failed_login('cashier')
+            if locked:
+                return render_template(
+                    'cashier.html',
+                    error="Too many failed login attempts. Please wait 5 minutes and try again.",
+                    authed=False
+                ), 429
             return render_template(
                 'cashier.html',
                 error="Invalid staff username or password. Please check with Admin.",
@@ -1581,6 +1671,7 @@ def cashier_portal():
                 authed=False
             )
 
+        _clear_login_attempts('cashier')
         session.clear()
         session['is_cashier'] = True
         session['staff_id'] = staff.id
@@ -1688,14 +1779,20 @@ def process_booking_request():
 @app.route('/owner', methods=['GET', 'POST'])
 def owner_portal():
     if request.method == 'POST':
+        if _is_login_rate_limited('admin_owner'):
+            return render_template('admin.html', error="Too many failed login attempts. Please wait 5 minutes and try again.", authed=False, login_mode='owner'), 429
         pw = request.form.get('password')
         if pw == OWNER_PASSWORD or pw == ADMIN_PASSWORD:
+            _clear_login_attempts('admin_owner')
             session.clear()
             session['is_admin'] = True
             session['is_owner'] = True
             session['staff_name'] = 'Overseas Owner'
             record_audit('OWNER', 'Overseas Owner', 'OWNER_LOGIN', '', 'Owner logged into Remote Executive Monitor.')
             return redirect(url_for('admin', view='monitor'))
+        locked, _ = _record_failed_login('admin_owner')
+        if locked:
+            return render_template('admin.html', error="Too many failed login attempts. Please wait 5 minutes and try again.", authed=False, login_mode='owner'), 429
         return render_template('admin.html', error="Incorrect Owner or Admin Password.", authed=False, login_mode='owner')
 
     if not (session.get('is_owner') or session.get('is_admin')):
@@ -1718,9 +1815,12 @@ def admin():
         return Response(status=200)
 
     if request.method == 'POST':
+        if _is_login_rate_limited('admin_owner'):
+            return render_template('admin.html', error="Too many failed login attempts. Please wait 5 minutes and try again.", authed=False), 429
         pw = request.form.get('password')
         role_select = request.form.get('role_select', 'admin')
         if pw == OWNER_PASSWORD:
+            _clear_login_attempts('admin_owner')
             session.clear()
             session['is_admin'] = True
             session['is_owner'] = True
@@ -1728,12 +1828,16 @@ def admin():
             record_audit('OWNER', 'Overseas Owner', 'OWNER_LOGIN', '', 'Owner logged into Remote Monitor & Admin.')
             return redirect(url_for('admin', view='monitor'))
         elif pw == ADMIN_PASSWORD:
+            _clear_login_attempts('admin_owner')
             session.clear()
             session['is_admin'] = True
             session['is_owner'] = (role_select == 'owner')
             session['staff_name'] = 'Overseas Owner' if role_select == 'owner' else 'System Admin'
             record_audit('ADMIN', session['staff_name'], 'ADMIN_LOGIN', '', f"{session['staff_name']} logged into Admin Portal.")
             return redirect(url_for('admin'))
+        locked, _ = _record_failed_login('admin_owner')
+        if locked:
+            return render_template('admin.html', error="Too many failed login attempts. Please wait 5 minutes and try again.", authed=False), 429
         return render_template('admin.html', error="Incorrect password. Please try again.", authed=False)
 
     if not session.get('is_admin'):

@@ -254,10 +254,10 @@
                     </h2>
                 </div>
                 <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem;">
-                    Enter your <strong>Reference Code</strong> (e.g., <code>MF-FD-0001</code> or <code>MF-RM-0001</code>), <strong>Mobile Number</strong>, or <strong>Full Name</strong> to check confirmation status, payment verification, and assigned table/chairs.
+                    Enter your <strong>Reference Code</strong> (e.g., <code>MF-FD-0001</code> or <code>MF-RM-0001</code>) or <strong>Mobile Number</strong> to check confirmation status, payment verification, and assigned table/chairs.
                 </p>
                 <form id="lookupForm" onsubmit="lookupBookings(event)" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                    <input type="text" id="lookupQuery" required placeholder="e.g. MF-FD-0001, 09171234567, or Juan Dela Cruz" class="form-input" style="flex: 1; min-width: 240px;">
+                    <input type="text" id="lookupQuery" required placeholder="e.g. MF-FD-0001 or 09171234567" class="form-input" style="flex: 1; min-width: 240px;">
                     <button type="submit" id="lookupSubmitBtn" class="btn btn-primary">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <span>Search</span>
@@ -418,12 +418,16 @@
 
             <div class="receipt-box" id="receiptDetailsBox"></div>
 
-            <div class="no-print" style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
-                <button type="button" onclick="window.print()" class="btn btn-outline" style="flex: 1;">
+            <div class="no-print" style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1.25rem;">
+                <button type="button" id="copyReceiptRefBtn" onclick="copyReceiptReference()" class="btn btn-outline" style="flex: 1; min-width: 110px;">
+                    <i class="fa-regular fa-copy"></i>
+                    <span>Copy Ref</span>
+                </button>
+                <button type="button" onclick="window.print()" class="btn btn-outline" style="flex: 1; min-width: 120px;">
                     <i class="fa-solid fa-print"></i>
                     <span>Print Receipt</span>
                 </button>
-                <button type="button" onclick="closeReceiptModal()" class="btn btn-primary" style="flex: 1;">
+                <button type="button" onclick="closeReceiptModal()" class="btn btn-primary" style="flex: 1; min-width: 100px;">
                     <span>Done</span>
                 </button>
             </div>
@@ -632,9 +636,41 @@
         foodDateEl.min = todayStr;
         foodDateEl.value = todayStr;
 
+        const FOOD_CART_STORAGE_KEY = 'mf_food_cart_v1';
         let foodMenuData = [];
         let foodMenuPromise = null;
-        let foodCart = {};
+        let lastReceiptRefCode = '';
+
+        function loadSavedFoodCart() {
+            try {
+                const raw = localStorage.getItem(FOOD_CART_STORAGE_KEY);
+                if (!raw) return {};
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+                const clean = {};
+                Object.keys(parsed).forEach(k => {
+                    const id = parseInt(k, 10);
+                    const qty = parseInt(parsed[k], 10);
+                    if (id > 0 && qty > 0) clean[id] = Math.min(qty, 99);
+                });
+                return clean;
+            } catch (err) {
+                return {};
+            }
+        }
+
+        function saveFoodCart() {
+            try {
+                const keys = Object.keys(foodCart);
+                if (keys.length === 0) {
+                    localStorage.removeItem(FOOD_CART_STORAGE_KEY);
+                } else {
+                    localStorage.setItem(FOOD_CART_STORAGE_KEY, JSON.stringify(foodCart));
+                }
+            } catch (err) {}
+        }
+
+        let foodCart = loadSavedFoodCart();
         let activeMenuCategory = 'all';
 
         function showToast(message, isError = false) {
@@ -711,22 +747,25 @@
         function renderRoomsGrid(data, guests = '2') {
             const grid = document.getElementById('roomsGrid');
             grid.innerHTML = '';
-            document.getElementById('roomCountBadge').innerText = `${data.length} Available`;
+            const roomsList = Array.isArray(data) ? data : [];
+            const availableCount = roomsList.filter(r => r.is_available_for_dates !== false).length;
+            document.getElementById('roomCountBadge').innerText = `${availableCount} Available`;
 
-            if (!data || data.length === 0) {
+            if (roomsList.length === 0) {
                 grid.innerHTML = `
                     <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle);">
                         <i class="fa-solid fa-calendar-xmark" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 0.75rem;"></i>
-                        <h4 class="font-display" style="font-size: 1.4rem; margin-bottom: 0.3rem;">No Rooms Available</h4>
-                        <p style="font-size: 0.86rem; color: var(--text-secondary);">All rooms for ${escapeHtml(guests)} guest(s) are booked for these dates. Please try different dates.</p>
+                        <h4 class="font-display" style="font-size: 1.4rem; margin-bottom: 0.3rem;">No Rooms Match Capacity</h4>
+                        <p style="font-size: 0.86rem; color: var(--text-secondary);">No resort rooms accommodate ${escapeHtml(guests)} guest(s). Please adjust guest count or contact the front desk.</p>
                     </div>`;
                 return;
             }
 
             const nights = getNightsCount();
 
-            data.forEach(r => {
+            roomsList.forEach(r => {
                 const total = nights * r.price_per_night;
+                const isAvailable = (r.is_available_for_dates !== false);
                 const hasPhoto = Boolean(r.image_url && r.image_url.trim() !== '');
                 const mediaHtml = hasPhoto
                     ? `<img src="${escapeHtml(r.image_url)}" alt="Room ${escapeHtml(r.room_number)}" class="room-card-img" loading="lazy" decoding="async">`
@@ -736,12 +775,13 @@
                        </div>`;
 
                 const card = document.createElement('article');
-                card.className = 'room-card';
+                card.className = isAvailable ? 'room-card' : 'room-card is-booked';
                 card.innerHTML = `
                     <div class="room-card-media">
                         ${mediaHtml}
                         <span class="room-badge-top">Room ${escapeHtml(r.room_number)}</span>
                         <span class="room-capacity-pill"><i class="fa-solid fa-user-group" style="margin-right:4px;"></i> Max ${r.capacity} Pax</span>
+                        ${isAvailable ? '' : '<span class="room-badge-booked"><i class="fa-solid fa-calendar-xmark" style="margin-right:4px;"></i> Booked for Dates</span>'}
                     </div>
                     <div class="room-card-body">
                         <h4 class="room-card-title">${escapeHtml(r.room_type)}</h4>
@@ -756,11 +796,17 @@
                                 <span class="price-meta">₱${Number(r.price_per_night).toLocaleString()} / night &bull; ${nights} night(s)</span>
                                 <span class="price-amount">₱${Number(total).toLocaleString()}</span>
                             </div>
-                            <button type="button" class="btn btn-primary btn-sm"
-                                onclick="openRoomBookingModal(${r.id}, '${escapeHtml(r.room_type)}', 'Room ${escapeHtml(r.room_number)}', ${total}, ${nights})">
-                                <span>Book Now</span>
-                                <i class="fa-solid fa-arrow-right"></i>
-                            </button>
+                            ${isAvailable
+                                ? `<button type="button" class="btn btn-primary btn-sm"
+                                        onclick="openRoomBookingModal(${r.id}, '${escapeHtml(r.room_type)}', 'Room ${escapeHtml(r.room_number)}', ${total}, ${nights})">
+                                        <span>Book Now</span>
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                   </button>`
+                                : `<button type="button" class="btn btn-outline btn-sm" disabled aria-disabled="true">
+                                        <i class="fa-solid fa-lock"></i>
+                                        <span>Booked</span>
+                                   </button>`
+                            }
                         </div>
                     </div>
                 `;
@@ -775,7 +821,7 @@
             const guests = document.getElementById('roomGuests').value;
 
             try {
-                const res = await fetch(`/api/rooms/available?check_in=${encodeURIComponent(checkIn)}&check_out=${encodeURIComponent(checkOut)}&guests=${encodeURIComponent(guests)}`);
+                const res = await fetch(`/api/rooms/available?check_in=${encodeURIComponent(checkIn)}&check_out=${encodeURIComponent(checkOut)}&guests=${encodeURIComponent(guests)}&include_booked=1`);
                 const data = await res.json();
 
                 if (!res.ok) {
@@ -805,6 +851,19 @@
         }
 
         // FOOD MENU & CART LOGIC
+        function pruneFoodCartAgainstMenu() {
+            if (!Array.isArray(foodMenuData) || foodMenuData.length === 0) return;
+            const validIds = new Set(foodMenuData.map(m => String(m.id)));
+            let changed = false;
+            Object.keys(foodCart).forEach(k => {
+                if (!validIds.has(String(k)) || !(foodCart[k] > 0)) {
+                    delete foodCart[k];
+                    changed = true;
+                }
+            });
+            if (changed) saveFoodCart();
+        }
+
         async function loadFoodMenu() {
             if (foodMenuData.length > 0) return foodMenuData;
             if (foodMenuPromise) return foodMenuPromise;
@@ -816,7 +875,9 @@
                 try {
                     const res = await fetch('/api/menu');
                     foodMenuData = await res.json();
+                    pruneFoodCartAgainstMenu();
                     renderFoodMenu();
+                    updateFoodCartUI();
                     return foodMenuData;
                 } catch (err) {
                     showToast('Unable to load the food menu.', true);
@@ -845,6 +906,7 @@
                 foodCart[itemId] = 1;
                 if (item) showToast(`Added to cart: ${item.name}`);
             }
+            saveFoodCart();
             renderFoodMenu();
             updateFoodCartUI();
         }
@@ -857,6 +919,7 @@
             } else {
                 foodCart[itemId] = next;
             }
+            saveFoodCart();
             renderFoodMenu();
             updateFoodCartUI();
             if (!document.getElementById('foodCartModal').classList.contains('hidden')) {
@@ -866,6 +929,7 @@
 
         function clearFoodCart() {
             foodCart = {};
+            saveFoodCart();
             renderFoodMenu();
             updateFoodCartUI();
             if (!document.getElementById('foodCartModal').classList.contains('hidden')) {
@@ -874,8 +938,11 @@
             showToast('Food cart cleared.');
         }
 
-        function openFoodCartModal() {
+        async function openFoodCartModal() {
             switchTab('food');
+            if (!foodMenuData.length) {
+                await loadFoodMenu();
+            }
             renderFoodCartModalItems();
             document.getElementById('foodCartModal').classList.remove('hidden');
         }
@@ -947,13 +1014,20 @@
             let totalQty = 0;
             let totalPrice = 0;
 
-            foodMenuData.forEach(item => {
-                const qty = foodCart[item.id] || 0;
-                if (qty > 0) {
-                    totalQty += qty;
-                    totalPrice += qty * item.price;
-                }
-            });
+            if (foodMenuData.length > 0) {
+                foodMenuData.forEach(item => {
+                    const qty = foodCart[item.id] || 0;
+                    if (qty > 0) {
+                        totalQty += qty;
+                        totalPrice += qty * item.price;
+                    }
+                });
+            } else {
+                Object.keys(foodCart).forEach(k => {
+                    const qty = parseInt(foodCart[k], 10) || 0;
+                    if (qty > 0) totalQty += qty;
+                });
+            }
 
             document.getElementById('topCartCount').innerText = totalQty;
             document.getElementById('floatingCartCountBadge').innerText = totalQty;
@@ -1099,7 +1173,61 @@
             document.getElementById('bookingModal').classList.remove('hidden');
         }
 
+        function copyReceiptReference() {
+            const ref = (lastReceiptRefCode || '').trim();
+            if (!ref) {
+                showToast('No Reference Code available to copy.', true);
+                return;
+            }
+            const onCopied = () => {
+                const btn = document.getElementById('copyReceiptRefBtn');
+                if (btn) {
+                    const span = btn.querySelector('span');
+                    if (span) {
+                        const prev = span.innerText;
+                        span.innerText = 'Copied!';
+                        setTimeout(() => { span.innerText = prev; }, 1800);
+                    }
+                }
+                showToast(`Copied Reference Code: ${ref}`);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(ref).then(onCopied).catch(() => {
+                    try {
+                        const tmp = document.createElement('textarea');
+                        tmp.value = ref;
+                        tmp.setAttribute('readonly', '');
+                        tmp.style.position = 'fixed';
+                        tmp.style.opacity = '0';
+                        document.body.appendChild(tmp);
+                        tmp.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(tmp);
+                        onCopied();
+                    } catch (err) {
+                        showToast(`Reference Code: ${ref}`, false);
+                    }
+                });
+            } else {
+                try {
+                    const tmp = document.createElement('textarea');
+                    tmp.value = ref;
+                    tmp.setAttribute('readonly', '');
+                    tmp.style.position = 'fixed';
+                    tmp.style.opacity = '0';
+                    document.body.appendChild(tmp);
+                    tmp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tmp);
+                    onCopied();
+                } catch (err) {
+                    showToast(`Reference Code: ${ref}`, false);
+                }
+            }
+        }
+
         function showReceiptSlip(receipt) {
+            lastReceiptRefCode = (receipt && receipt.reference_code) ? String(receipt.reference_code).trim() : '';
             const box = document.getElementById('receiptDetailsBox');
             box.innerHTML = `
                 <div class="receipt-row">
@@ -1292,6 +1420,7 @@
 
                 if (res.ok) {
                     foodCart = {};
+                    saveFoodCart();
                     renderFoodMenu();
                     updateFoodCartUI();
                     closeModal();
@@ -1326,13 +1455,16 @@
                 const data = await res.json();
                 const wrapper = document.getElementById('lookupResultsWrapper');
                 const list = document.getElementById('lookupResultsList');
-                wrapper.classList.remove('hidden');
-                list.innerHTML = '';
 
                 if (!res.ok) {
+                    wrapper.classList.add('hidden');
+                    list.innerHTML = '';
                     showToast(data.error || 'Search error.', true);
                     return;
                 }
+
+                wrapper.classList.remove('hidden');
+                list.innerHTML = '';
 
                 if (!data.results || data.results.length === 0) {
                     list.innerHTML = `
@@ -1414,6 +1546,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             onRoomDatesChange();
             updateChairsBadge();
+            updateFoodCartUI();
             if (Array.isArray(INITIAL_ROOMS) && INITIAL_ROOMS.length > 0 && roomCheckInEl.value === INITIAL_CHECK_IN && roomCheckOutEl.value === INITIAL_CHECK_OUT) {
                 renderRoomsGrid(INITIAL_ROOMS, document.getElementById('roomGuests').value || '2');
             } else {
@@ -1422,7 +1555,9 @@
             const warmupMenu = () => {
                 if (!foodMenuData.length) loadFoodMenu();
             };
-            if ('requestIdleCallback' in window) {
+            if (Object.keys(foodCart).length > 0) {
+                warmupMenu();
+            } else if ('requestIdleCallback' in window) {
                 window.requestIdleCallback(warmupMenu, { timeout: 1200 });
             } else {
                 setTimeout(warmupMenu, 700);
