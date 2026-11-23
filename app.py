@@ -1555,8 +1555,6 @@ def ensure_cashier_still_on_duty():
 
 @app.route('/cashier', methods=['GET', 'POST'])
 def cashier_portal():
-    on_duty_staff = get_on_duty_staff_summary()
-
     if request.method == 'POST':
         username = (request.form.get('username') or '').strip().lower()
         pw = (request.form.get('password') or '').strip()
@@ -1566,8 +1564,7 @@ def cashier_portal():
             return render_template(
                 'cashier.html',
                 error="Invalid staff username or password. Please check with Admin.",
-                authed=False,
-                on_duty_staff=on_duty_staff
+                authed=False
             )
 
         if not staff.is_on_duty:
@@ -1581,8 +1578,7 @@ def cashier_portal():
             return render_template(
                 'cashier.html',
                 error=f"Access Denied: {staff.full_name} is currently OFF DUTY. Only Admin/Owner can set staff ON DUTY.",
-                authed=False,
-                on_duty_staff=on_duty_staff
+                authed=False
             )
 
         session.clear()
@@ -1600,15 +1596,14 @@ def cashier_portal():
         return redirect(url_for('cashier_portal'))
 
     if not (session.get('is_cashier') or session.get('is_admin') or session.get('is_owner')):
-        return render_template('cashier.html', authed=False, on_duty_staff=on_duty_staff)
+        return render_template('cashier.html', authed=False)
 
     if session.get('is_cashier') and not (session.get('is_admin') or session.get('is_owner')):
         if not ensure_cashier_still_on_duty():
             return render_template(
                 'cashier.html',
                 error="Your receiver duty shift was ended or disabled by Admin/Owner.",
-                authed=False,
-                on_duty_staff=on_duty_staff
+                authed=False
             )
 
     ctx = build_dashboard_context()
