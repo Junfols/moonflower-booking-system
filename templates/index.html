@@ -57,7 +57,7 @@
         <!-- Dynamic Hero Section (Photo customizable from Admin, never hardcoded) -->
         <section class="hero-section" id="heroSection">
             {% if settings.hero_image %}
-            <img src="{{ settings.hero_image }}" alt="{{ settings.hero_title }}" class="hero-bg" id="heroBannerImg">
+            <img src="{{ settings.hero_image }}" alt="{{ settings.hero_title }}" class="hero-bg" id="heroBannerImg" fetchpriority="high" decoding="async">
             {% endif %}
             <div class="hero-overlay"></div>
             <div class="hero-content">
@@ -225,7 +225,7 @@
                 <input type="search" id="menuSearchInput" placeholder="Search dishes (e.g., Salmon, Tempura, Nasi Goreng)..." class="form-input" style="max-width: 300px; padding: 0.55rem 0.9rem; font-size: 0.84rem;" oninput="renderFoodMenu()">
             </div>
 
-            <div class="filter-pills" id="menuCategoryPills" style="margin-bottom: 1.25rem;">
+            <div class="filter-pills filter-pills-scroll" id="menuCategoryPills" style="margin-bottom: 1.25rem;">
                 <button type="button" class="filter-pill active" onclick="filterMenuCategory('all', this)">All Menu</button>
                 <button type="button" class="filter-pill" onclick="filterMenuCategory('Japanese Fusion Rolls', this)">Japanese Fusion Rolls</button>
                 <button type="button" class="filter-pill" onclick="filterMenuCategory('Appetizers & Snacks', this)">Appetizers &amp; Snacks</button>
@@ -236,11 +236,11 @@
 
             <div id="foodMenuGrid" class="cards-grid-3"></div>
 
-            <!-- Compact Floating Cart Icon Button -->
-            <button type="button" id="floatingCartBtn" onclick="openFoodCartModal()" class="hidden" aria-label="Open Food Cart" title="Open Food Cart"
-                style="position: fixed; bottom: 1.35rem; right: 1.35rem; z-index: 45; width: 58px; height: 58px; border-radius: 999px; background: var(--brand-primary); color: #fff; border: 2px solid #fff; box-shadow: var(--shadow-lg); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 180ms ease;">
-                <i class="fa-solid fa-cart-shopping" style="font-size: 1.3rem;"></i>
-                <span id="floatingCartCountBadge" style="position: absolute; top: -4px; right: -4px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px; background: var(--brand-accent); color: #fff; font-size: 0.76rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: var(--shadow-sm);">0</span>
+            <!-- Floating Order Bag Pill -->
+            <button type="button" id="floatingCartBtn" onclick="openFoodCartModal()" class="floating-cart-pill hidden" aria-label="Open Food Cart" title="Open Food Cart">
+                <i class="fa-solid fa-bag-shopping"></i>
+                <span>View Order</span>
+                <span id="floatingCartCountBadge" class="floating-cart-badge">0</span>
             </button>
         </section>
 
@@ -515,10 +515,9 @@
                     Specializes in Dine-in, Outdoor Garden Seating, Homemade Ice Cream &amp; Japanese Fusion &bull; {{ settings.contact_email }}
                 </div>
             </div>
-            <div>
-                <span>Call/Text: <strong>{{ settings.contact_phone }}</strong></span>
-                <span style="margin: 0 0.6rem;">&bull;</span>
-                <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Login</a>
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <span>Call/Text: <strong style="color: var(--text-primary);">{{ settings.contact_phone }}</strong></span>
+                <a href="/cashier" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.32rem 0.85rem; border-radius: 999px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); color: var(--brand-accent); text-decoration: none; font-weight: 600; font-size: 0.78rem;">Cashier Login</a>
             </div>
         </div>
     </footer>
