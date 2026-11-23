@@ -23,7 +23,7 @@
     <!-- Top Navigation -->
     <header class="site-header">
         <div class="container navbar">
-            <a href="/" class="brand-logo" id="navBrandLogo">
+            <a href="/" class="brand-logo" id="navBrandLogo" onclick="handleBrandLogoTap(event)" style="user-select: none; -webkit-user-select: none; touch-action: manipulation;">
                 <div class="brand-emblem">
                     <i class="fa-solid fa-moon"></i>
                 </div>
@@ -514,8 +514,6 @@
                 <span>Call/Text: <strong>{{ settings.contact_phone }}</strong></span>
                 <span style="margin: 0 0.6rem;">&bull;</span>
                 <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Login</a>
-                <span style="margin: 0 0.6rem;">&bull;</span>
-                <a href="/admin" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">Owner &amp; Admin</a>
             </div>
         </div>
     </footer>
@@ -1363,6 +1361,29 @@
 
         function closeReceiptModal() {
             document.getElementById('receiptModal').classList.add('hidden');
+        }
+
+        let brandTapCount = 0;
+        let brandTapTimer = null;
+
+        function handleBrandLogoTap(e) {
+            if (e) e.preventDefault();
+            brandTapCount += 1;
+            clearTimeout(brandTapTimer);
+
+            if (brandTapCount >= 5) {
+                brandTapCount = 0;
+                window.location.href = '/owner';
+                return;
+            }
+
+            if (brandTapCount === 1 && window.scrollY > 40) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            brandTapTimer = setTimeout(() => {
+                brandTapCount = 0;
+            }, 2500);
         }
 
         window.addEventListener('DOMContentLoaded', () => {
