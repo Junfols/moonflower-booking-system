@@ -164,40 +164,31 @@
             </div>
             {% endif %}
 
-            <!-- Step 1: Compact Collapsible Dining Schedule & Cart Bar -->
-            <div class="search-bar-card" style="padding: 0.85rem 1rem; margin-bottom: 1rem;">
-                <div class="schedule-summary-bar">
-                    <div style="min-width: 0; flex: 1 1 220px;">
-                        <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--brand-accent); margin-bottom: 0.15rem;">
-                            <i class="fa-solid fa-utensils"></i> Dining Schedule &amp; Seating
-                        </div>
-                        <div id="foodScheduleSummaryText" style="font-size: 0.86rem; font-weight: 700; color: var(--text-primary);">
-                            Today &bull; 11:30 AM &bull; Dine-in &bull; 5 Guests
-                        </div>
-                        <span id="chairsPreviewBadge" class="status-badge status-pending" style="margin-top: 0.35rem; font-size: 0.65rem;">
-                            <i class="fa-solid fa-chair"></i> Staff Reserves: 1 Table + 5 Chairs
-                        </span>
+            <!-- Step 1: Dining Schedule & Party Size -->
+            <div class="search-bar-card">
+                <div class="search-bar-header">
+                    <div>
+                        <h2 class="search-bar-title">
+                            <i class="fa-solid fa-utensils" style="color: var(--brand-accent);"></i>
+                            <span>1. Dining Schedule &amp; Party Size</span>
+                        </h2>
+                        <p style="font-size: 0.83rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                            Based on your guest count, our staff automatically reserves the matching <strong>Table + Chairs</strong>.
+                        </p>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
-                        <button type="button" id="foodScheduleEditBtn" onclick="toggleFoodScheduleEditor()" class="btn btn-outline btn-sm">
-                            <i class="fa-regular fa-pen-to-square"></i>
-                            <span>Edit Schedule / Pax</span>
-                        </button>
-                        <button type="button" onclick="openFoodCartModal()" class="btn btn-accent btn-sm">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            <span>Cart (<span id="topCartCount">0</span> &bull; ₱<span id="topCartTotal">0</span>)</span>
-                        </button>
-                    </div>
+                    <span id="chairsPreviewBadge" class="status-badge status-pending">
+                        <i class="fa-solid fa-chair"></i> Staff Reserves: 1 Table + 5 Chairs
+                    </span>
                 </div>
 
-                <div id="foodScheduleFields" class="search-grid-tables hidden" style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border-subtle);">
+                <div class="search-grid-tables">
                     <div class="form-group">
                         <label for="foodDate" class="form-label">Dining Date</label>
-                        <input type="date" id="foodDate" required class="form-input" onchange="updateChairsBadge()">
+                        <input type="date" id="foodDate" required class="form-input">
                     </div>
                     <div class="form-group">
                         <label for="foodArrivalTime" class="form-label">Arrival Time</label>
-                        <select id="foodArrivalTime" class="form-select" onchange="updateChairsBadge()">
+                        <select id="foodArrivalTime" class="form-select">
                             <option value="11:30 AM (Lunch)">11:30 AM — Lunch</option>
                             <option value="12:30 PM (Lunch)">12:30 PM — Lunch</option>
                             <option value="02:00 PM (Afternoon)">02:00 PM — Afternoon</option>
@@ -216,50 +207,34 @@
                         <label for="foodPax" class="form-label">Number of Guests (Pax)</label>
                         <input type="number" id="foodPax" min="1" max="50" value="5" required class="form-input" oninput="updateChairsBadge()">
                     </div>
-                    <div style="display:flex; align-items:flex-end;">
-                        <button type="button" onclick="toggleFoodScheduleEditor()" class="btn btn-primary btn-sm" style="width: 100%;">
-                            <i class="fa-solid fa-check"></i>
-                            <span>Done</span>
+                    <div>
+                        <button type="button" onclick="openFoodCartModal()" class="btn btn-accent" style="width: 100%;">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <span>View Cart (<span id="topCartCount">0</span> &bull; ₱<span id="topCartTotal">0</span>)</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Step 2: Sticky Category Filter, Search, View Switcher & Quick-Scan Menu -->
-            <div class="section-header" style="align-items: center; margin-bottom: 0.6rem;">
+            <!-- Step 2: Category Filter, Search & Multi-Select Food Menu Grid -->
+            <div class="section-header" style="align-items: flex-end;">
                 <div>
-                    <h3 class="section-title" style="font-size: 1.45rem;">MoonFlower Garden Menu</h3>
-                    <p style="font-size: 0.79rem; color: var(--text-secondary);">Tap a dish to add, or tap any category header to fold/unfold.</p>
+                    <h3 class="section-title">2. MoonFlower Garden Menu</h3>
+                    <p style="font-size: 0.84rem; color: var(--text-secondary);">Japanese Fusion Rolls, Main Course, Appetizers, Drinks &amp; Desserts. Select multiple dishes for one checkout.</p>
                 </div>
-                <span id="menuTotalCountBadge" class="status-badge status-pending">Loading menu...</span>
+                <input type="search" id="menuSearchInput" placeholder="Search dishes (e.g., Salmon, Tempura, Nasi Goreng)..." class="form-input" style="max-width: 300px; padding: 0.55rem 0.9rem; font-size: 0.84rem;" oninput="renderFoodMenu()">
             </div>
 
-            <div class="menu-sticky-bar">
-                <div class="menu-controls-row">
-                    <input type="search" id="menuSearchInput" placeholder="Search dish..." class="form-input" style="flex: 1; min-width: 0; min-height: 38px; padding: 0.4rem 0.78rem; font-size: 0.83rem;" oninput="renderFoodMenu()">
-                    <div class="menu-view-toggle" role="group" aria-label="Menu layout view">
-                        <button type="button" id="menuViewCompactBtn" class="menu-view-btn active" onclick="setMenuViewMode('compact')" title="Compact Grid (See All Fast)">
-                            <i class="fa-solid fa-table-cells"></i>
-                            <span>Grid</span>
-                        </button>
-                        <button type="button" id="menuViewCardsBtn" class="menu-view-btn" onclick="setMenuViewMode('cards')" title="Photo Cards">
-                            <i class="fa-solid fa-image"></i>
-                            <span>Cards</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="menu-pills-wrap" id="menuCategoryPills">
-                    <button type="button" class="filter-pill active" onclick="filterMenuCategory('all', this)">All Menu</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Japanese Fusion Rolls', this)">Japanese Fusion Rolls</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Appetizers & Snacks', this)">Appetizers &amp; Snacks</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Main Course', this)">Main Course</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Drinks & Beers', this)">Drinks &amp; Beers</button>
-                    <button type="button" class="filter-pill" onclick="filterMenuCategory('Dessert', this)">Dessert</button>
-                </div>
+            <div class="filter-pills filter-pills-scroll" id="menuCategoryPills" style="margin-bottom: 1.25rem;">
+                <button type="button" class="filter-pill active" onclick="filterMenuCategory('all', this)">All Menu</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Japanese Fusion Rolls', this)">Japanese Fusion Rolls</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Appetizers & Snacks', this)">Appetizers &amp; Snacks</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Main Course', this)">Main Course</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Drinks & Beers', this)">Drinks &amp; Beers</button>
+                <button type="button" class="filter-pill" onclick="filterMenuCategory('Dessert', this)">Dessert</button>
             </div>
 
-            <div id="foodMenuGrid" class="food-menu-compact-list"></div>
+            <div id="foodMenuGrid" class="cards-grid-3"></div>
 
             <!-- Floating Order Bag Pill -->
             <button type="button" id="floatingCartBtn" onclick="openFoodCartModal()" class="floating-cart-pill hidden" aria-label="Open Food Cart" title="Open Food Cart">
@@ -697,18 +672,6 @@
 
         let foodCart = loadSavedFoodCart();
         let activeMenuCategory = 'all';
-        const MENU_VIEW_STORAGE_KEY = 'mf_menu_view_v1';
-
-        function loadSavedMenuViewMode() {
-            try {
-                const v = localStorage.getItem(MENU_VIEW_STORAGE_KEY);
-                return (v === 'cards' || v === 'compact') ? v : 'compact';
-            } catch (err) {
-                return 'compact';
-            }
-        }
-
-        let menuViewMode = loadSavedMenuViewMode();
 
         function showToast(message, isError = false) {
             const container = document.getElementById('toastContainer');
@@ -747,30 +710,9 @@
             document.getElementById('nightsPreviewBadge').innerText = `${nights} Night${nights > 1 ? 's' : ''} Stay`;
         }
 
-        const collapsedMenuCats = {};
-
-        function toggleFoodScheduleEditor() {
-            const fields = document.getElementById('foodScheduleFields');
-            const btn = document.getElementById('foodScheduleEditBtn');
-            if (!fields) return;
-            const isHidden = fields.classList.toggle('hidden');
-            if (btn) {
-                btn.innerHTML = isHidden
-                    ? '<i class="fa-regular fa-pen-to-square"></i><span>Edit Schedule / Pax</span>'
-                    : '<i class="fa-solid fa-chevron-up"></i><span>Hide</span>';
-            }
-        }
-
         function updateChairsBadge() {
             const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
             const area = document.getElementById('foodSeatingArea').value;
-            const dateVal = document.getElementById('foodDate').value || 'Today';
-            const timeVal = (document.getElementById('foodArrivalTime').value || '11:30 AM').split('(')[0].trim();
-            const shortArea = area.indexOf('Outdoor') !== -1 ? 'Outdoor' : 'Indoor';
-            const summaryEl = document.getElementById('foodScheduleSummaryText');
-            if (summaryEl) {
-                summaryEl.textContent = `${dateVal} • ${timeVal} • ${shortArea} • ${pax} Guest${pax > 1 ? 's' : ''}`;
-            }
             document.getElementById('chairsPreviewBadge').innerHTML = `<i class="fa-solid fa-chair"></i> ${escapeHtml(area)}: 1 Table + ${pax} Chair${pax > 1 ? 's' : ''}`;
             updateFoodCartUI();
         }
@@ -922,74 +864,6 @@
             if (changed) saveFoodCart();
         }
 
-        function updateMenuViewButtons() {
-            const compactBtn = document.getElementById('menuViewCompactBtn');
-            const cardsBtn = document.getElementById('menuViewCardsBtn');
-            if (compactBtn) compactBtn.classList.toggle('active', menuViewMode === 'compact');
-            if (cardsBtn) cardsBtn.classList.toggle('active', menuViewMode === 'cards');
-        }
-
-        function setMenuViewMode(mode) {
-            menuViewMode = (mode === 'cards') ? 'cards' : 'compact';
-            try {
-                localStorage.setItem(MENU_VIEW_STORAGE_KEY, menuViewMode);
-            } catch (err) {}
-            updateMenuViewButtons();
-            renderFoodMenu();
-        }
-
-        const PREFERRED_CAT_ORDER = [
-            'Japanese Fusion Rolls',
-            'Appetizers & Snacks',
-            'Main Course',
-            'Drinks & Beers',
-            'Dessert'
-        ];
-
-        function getOrderedMenuCategories(items) {
-            const counts = {};
-            (items || []).forEach(m => {
-                const c = (m.category || 'Other').trim() || 'Other';
-                counts[c] = (counts[c] || 0) + 1;
-            });
-            const keys = Object.keys(counts);
-            keys.sort((a, b) => {
-                const ia = PREFERRED_CAT_ORDER.indexOf(a);
-                const ib = PREFERRED_CAT_ORDER.indexOf(b);
-                if (ia !== -1 && ib !== -1) return ia - ib;
-                if (ia !== -1) return -1;
-                if (ib !== -1) return 1;
-                return a.localeCompare(b);
-            });
-            return { keys, counts };
-        }
-
-        function updateCategoryPills() {
-            const container = document.getElementById('menuCategoryPills');
-            if (!container) return;
-            const { keys, counts } = getOrderedMenuCategories(foodMenuData);
-            if (activeMenuCategory !== 'all' && !counts[activeMenuCategory]) {
-                activeMenuCategory = 'all';
-            }
-            container.innerHTML = '';
-
-            const allBtn = document.createElement('button');
-            allBtn.type = 'button';
-            allBtn.className = activeMenuCategory === 'all' ? 'filter-pill active' : 'filter-pill';
-            allBtn.textContent = `All Menu (${foodMenuData.length})`;
-            allBtn.onclick = () => filterMenuCategory('all', allBtn);
-            container.appendChild(allBtn);
-
-            keys.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = activeMenuCategory === cat ? 'filter-pill active' : 'filter-pill';
-                btn.textContent = `${cat} (${counts[cat]})`;
-                btn.onclick = () => filterMenuCategory(cat, btn);
-                container.appendChild(btn);
-            });
-        }
-
         async function loadFoodMenu() {
             if (foodMenuData.length > 0) return foodMenuData;
             if (foodMenuPromise) return foodMenuPromise;
@@ -1002,8 +876,6 @@
                     const res = await fetch('/api/menu');
                     foodMenuData = await res.json();
                     pruneFoodCartAgainstMenu();
-                    updateCategoryPills();
-                    updateMenuViewButtons();
                     renderFoodMenu();
                     updateFoodCartUI();
                     return foodMenuData;
@@ -1021,7 +893,7 @@
             activeMenuCategory = category;
             const pills = document.querySelectorAll('#menuCategoryPills .filter-pill');
             pills.forEach(p => p.classList.remove('active'));
-            if (btnEl) btnEl.classList.add('active');
+            btnEl.classList.add('active');
             renderFoodMenu();
         }
 
@@ -1171,7 +1043,6 @@
 
         function renderFoodMenu() {
             const grid = document.getElementById('foodMenuGrid');
-            const countBadge = document.getElementById('menuTotalCountBadge');
             grid.innerHTML = '';
 
             const searchEl = document.getElementById('menuSearchInput');
@@ -1179,101 +1050,31 @@
 
             const filtered = foodMenuData.filter(m => {
                 const catMatch = (activeMenuCategory === 'all' || m.category === activeMenuCategory);
-                const textMatch = !query || m.name.toLowerCase().includes(query) || (m.description || '').toLowerCase().includes(query) || (m.category || '').toLowerCase().includes(query);
+                const textMatch = !query || m.name.toLowerCase().includes(query) || (m.description || '').toLowerCase().includes(query) || m.category.toLowerCase().includes(query);
                 return catMatch && textMatch;
             });
 
-            if (countBadge) {
-                countBadge.textContent = `${filtered.length} Dish${filtered.length === 1 ? '' : 'es'}`;
-            }
-
             if (filtered.length === 0) {
-                grid.className = 'food-menu-compact-list';
-                grid.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding: 2.25rem; color: var(--text-muted);">No dishes match your filter.</div>`;
+                grid.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding: 2.5rem; color: var(--text-muted);">No dishes match your filter.</div>`;
                 return;
             }
 
-            if (menuViewMode === 'compact') {
-                grid.className = 'food-menu-compact-list';
-
-                const appendCompactRow = (item, showCatTag = false) => {
-                    const qty = foodCart[item.id] || 0;
-                    const isSelected = qty > 0;
-                    const hasPhoto = Boolean(item.image_url && item.image_url.trim() !== '');
-                    const thumbHtml = hasPhoto
-                        ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" class="menu-compact-thumb" loading="lazy" decoding="async">`
-                        : `<div class="menu-compact-icon"><i class="fa-solid fa-bowl-food"></i></div>`;
-
-                    const row = document.createElement('article');
-                    row.className = isSelected ? 'menu-compact-row is-food-selected' : 'menu-compact-row';
-                    row.innerHTML = `
-                        <div class="menu-compact-top" onclick="toggleFoodSelect(${item.id})" title="${escapeHtml(item.description || item.name)}">
-                            ${thumbHtml}
-                            <div class="menu-compact-info">
-                                <div class="menu-compact-name">${escapeHtml(item.name)}</div>
-                                ${showCatTag ? `<span class="menu-compact-cat">${escapeHtml(item.category)}</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="menu-compact-bottom">
-                            <span class="menu-compact-price">₱${Number(item.price).toLocaleString()}</span>
-                            <div class="menu-compact-actions">
-                                ${!isSelected ? `
-                                    <button type="button" class="btn btn-outline btn-sm" onclick="toggleFoodSelect(${item.id})" style="border-color: var(--brand-accent); color: var(--brand-accent); min-height: 28px; padding: 0.18rem 0.55rem; font-size: 0.72rem; border-radius: 8px;">
-                                        <i class="fa-solid fa-plus"></i>
-                                        <span>Add</span>
-                                    </button>
-                                ` : `
-                                    <button type="button" class="btn btn-outline btn-sm" onclick="changeFoodQty(${item.id}, -1)" style="min-height: 28px; padding: 0.15rem 0.48rem; font-size: 0.78rem; border-radius: 8px;">&minus;</button>
-                                    <strong style="min-width: 18px; text-align:center; font-size: 0.84rem;">${qty}</strong>
-                                    <button type="button" class="btn btn-accent btn-sm" onclick="changeFoodQty(${item.id}, 1)" style="min-height: 28px; padding: 0.15rem 0.48rem; font-size: 0.78rem; border-radius: 8px;">&plus;</button>
-                                `}
-                            </div>
-                        </div>
-                    `;
-                    grid.appendChild(row);
-                };
-
-                if (activeMenuCategory === 'all' && !query) {
-                    const { keys } = getOrderedMenuCategories(filtered);
-                    keys.forEach(cat => {
-                        const catItems = filtered.filter(m => ((m.category || 'Other').trim() || 'Other') === cat);
-                        const isCollapsed = Boolean(collapsedMenuCats[cat]);
-                        const header = document.createElement('button');
-                        header.type = 'button';
-                        header.className = 'food-cat-group-title';
-                        header.innerHTML = `<span>${escapeHtml(cat)}</span><span class="food-cat-count">${catItems.length} item${catItems.length > 1 ? 's' : ''} <i class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'}"></i></span>`;
-                        header.onclick = () => {
-                            collapsedMenuCats[cat] = !collapsedMenuCats[cat];
-                            renderFoodMenu();
-                        };
-                        grid.appendChild(header);
-                        if (!isCollapsed) {
-                            catItems.forEach(item => appendCompactRow(item, false));
-                        }
-                    });
-                } else {
-                    filtered.forEach(item => appendCompactRow(item, Boolean(query)));
-                }
-                return;
-            }
-
-            grid.className = 'food-cards-grid';
             filtered.forEach(item => {
                 const qty = foodCart[item.id] || 0;
                 const isSelected = qty > 0;
                 const hasPhoto = Boolean(item.image_url && item.image_url.trim() !== '');
                 const mediaHtml = hasPhoto
                     ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" class="room-card-img" loading="lazy" decoding="async">`
-                    : `<div style="width:100%; height:100%; background: linear-gradient(145deg, #2D261E 0%, #4A3928 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(255,255,255,0.92); padding:1rem; text-align:center;">
-                            <i class="fa-solid fa-bowl-food" style="font-size:1.55rem; margin-bottom:0.35rem; color:#F2D49C;"></i>
-                            <span style="font-family:var(--font-display); font-size:1.02rem; letter-spacing:-0.01em;">${escapeHtml(item.name)}</span>
+                    : `<div style="width:100%; height:100%; background: linear-gradient(145deg, #2D261E 0%, #4A3928 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; color:rgba(255,255,255,0.92); padding:1.25rem; text-align:center;">
+                            <i class="fa-solid fa-bowl-food" style="font-size:1.85rem; margin-bottom:0.5rem; color:#F2D49C;"></i>
+                            <span style="font-family:var(--font-display); font-size:1.18rem; letter-spacing:-0.01em;">${escapeHtml(item.name)}</span>
                        </div>`;
 
                 const card = document.createElement('article');
                 card.className = isSelected ? 'room-card is-food-selected' : 'room-card';
 
                 card.innerHTML = `
-                    <div class="room-card-media" style="height: 165px; cursor: pointer;" onclick="toggleFoodSelect(${item.id})">
+                    <div class="room-card-media" style="height: 188px; cursor: pointer;" onclick="toggleFoodSelect(${item.id})">
                         ${mediaHtml}
                         <span class="room-badge-top" style="background: rgba(156, 97, 27, 0.88);">${escapeHtml(item.category)}</span>
                         <span class="room-capacity-pill" style="${isSelected ? 'background: var(--brand-accent); color: #fff;' : ''}">
@@ -1295,7 +1096,7 @@
                                     <span>Select Food</span>
                                 </button>
                             ` : `
-                                <div style="display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                                <div style="display:flex; align-items:center; gap:0.4rem;">
                                     <button type="button" class="btn btn-outline btn-sm" onclick="changeFoodQty(${item.id}, -1)" style="padding: 0.35rem 0.65rem;">&minus;</button>
                                     <strong style="min-width: 24px; text-align:center; font-size: 0.95rem;">${qty}</strong>
                                     <button type="button" class="btn btn-accent btn-sm" onclick="changeFoodQty(${item.id}, 1)" style="padding: 0.35rem 0.65rem;">&plus;</button>
@@ -1746,7 +1547,6 @@
             onRoomDatesChange();
             updateChairsBadge();
             updateFoodCartUI();
-            updateMenuViewButtons();
             const initTab = (new URLSearchParams(window.location.search).get('tab') || window.location.hash.replace('#', '')).toLowerCase();
             if (initTab === 'food' || initTab === 'lookup' || initTab === 'rooms') {
                 switchTab(initTab);
