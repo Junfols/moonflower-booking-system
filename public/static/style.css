@@ -964,3 +964,13 @@ body {
     display: none !important;
   }
 }
+
+/* Automatically hide Install App button when already running inside installed PWA */
+@media all and (display-mode: standalone),
+       all and (display-mode: fullscreen),
+       all and (display-mode: minimal-ui),
+       all and (display-mode: window-controls-overlay) {
+  #installAppBtn {
+    display: none !important;
+  }
+}

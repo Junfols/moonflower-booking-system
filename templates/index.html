@@ -514,26 +514,76 @@
             });
         }
 
+        function isRunningAsInstalledApp() {
+            const displayModes = ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'];
+            const matchedDisplay = displayModes.some((mode) =>
+                window.matchMedia && window.matchMedia(`(display-mode: ${mode})`).matches
+            );
+            return Boolean(
+                matchedDisplay
+                || window.navigator.standalone === true
+                || (document.referrer && document.referrer.startsWith('android-app://'))
+            );
+        }
+
+        function updateInstallButtonVisibility() {
+            const btn = document.getElementById('installAppBtn');
+            if (!btn) return;
+            if (isRunningAsInstalledApp()) {
+                btn.classList.add('hidden');
+                return;
+            }
+            if (!deferredInstallPrompt && localStorage.getItem('mf_pwa_installed') === '1') {
+                btn.classList.add('hidden');
+                return;
+            }
+            btn.classList.remove('hidden');
+        }
+
+        updateInstallButtonVisibility();
+        ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'].forEach((mode) => {
+            if (window.matchMedia) {
+                const mql = window.matchMedia(`(display-mode: ${mode})`);
+                if (mql.addEventListener) {
+                    mql.addEventListener('change', updateInstallButtonVisibility);
+                }
+            }
+        });
+        if ('getInstalledRelatedApps' in navigator && typeof navigator.getInstalledRelatedApps === 'function') {
+            navigator.getInstalledRelatedApps().then((apps) => {
+                if (apps && apps.length > 0) {
+                    localStorage.setItem('mf_pwa_installed', '1');
+                    updateInstallButtonVisibility();
+                }
+            }).catch(() => {});
+        }
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredInstallPrompt = e;
-            const btn = document.getElementById('installAppBtn');
-            if (btn) btn.classList.remove('hidden');
+            localStorage.removeItem('mf_pwa_installed');
+            updateInstallButtonVisibility();
         });
 
         window.addEventListener('appinstalled', () => {
             deferredInstallPrompt = null;
-            const btn = document.getElementById('installAppBtn');
-            if (btn) btn.classList.add('hidden');
+            localStorage.setItem('mf_pwa_installed', '1');
+            updateInstallButtonVisibility();
             showToast('Moonflower App has been installed on your device!');
         });
 
         async function handleInstallAppClick() {
+            if (isRunningAsInstalledApp()) {
+                updateInstallButtonVisibility();
+                return;
+            }
             if (deferredInstallPrompt) {
                 deferredInstallPrompt.prompt();
                 const { outcome } = await deferredInstallPrompt.userChoice;
                 if (outcome === 'accepted') {
                     deferredInstallPrompt = null;
+                    localStorage.setItem('mf_pwa_installed', '1');
+                    updateInstallButtonVisibility();
                 }
             } else {
                 document.getElementById('installGuideModal').classList.remove('hidden');
