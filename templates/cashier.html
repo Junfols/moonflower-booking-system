@@ -21,11 +21,11 @@
     <main style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;">
         <div class="modal-card" style="max-width: 420px;">
             <div style="text-align: center; margin-bottom: 1.5rem;">
-                <div class="brand-emblem" style="margin: 0 auto 0.85rem auto; width: 52px; height: 52px; font-size: 1.35rem; background: var(--brand-accent); color: #fff;">
+                <div class="brand-emblem" id="cashierLoginEmblem" onclick="handleCashierEmblemTap()" style="margin: 0 auto 0.85rem auto; width: 52px; height: 52px; font-size: 1.35rem; background: var(--brand-accent); color: #fff; user-select: none; -webkit-user-select: none; touch-action: manipulation;">
                     <i class="fa-solid fa-cash-register"></i>
                 </div>
                 <span class="brand-subtitle">Front Desk Operations</span>
-                <h1 class="font-display" style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">Cashier &amp; Receiver</h1>
+                <h1 class="font-display" style="font-size: 1.72rem; font-weight: 600; color: var(--text-primary); line-height: 1.2; margin-bottom: 0.35rem;">Cashier &amp; Receiver</h1>
                 <p style="font-size: 0.84rem; color: var(--text-secondary);">Receive online room &amp; food bookings, verify GCash/cash payments, and assign table &amp; chairs.</p>
             </div>
 
@@ -71,12 +71,25 @@
                 {% endif %}
             </div>
 
-            <div style="margin-top: 1.25rem; text-align: center; display: flex; justify-content: space-between; font-size: 0.8rem;">
+            <div style="margin-top: 1.25rem; text-align: center; font-size: 0.82rem;">
                 <a href="/" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">&larr; Customer Portal</a>
-                <a href="/admin" style="color: var(--text-secondary); text-decoration: none; font-weight: 600;">Owner &amp; Admin &rarr;</a>
             </div>
         </div>
     </main>
+    <script>
+        let cashierTapCount = 0;
+        let cashierTapTimer = null;
+        function handleCashierEmblemTap() {
+            cashierTapCount += 1;
+            clearTimeout(cashierTapTimer);
+            if (cashierTapCount >= 5) {
+                cashierTapCount = 0;
+                window.location.href = '/owner';
+                return;
+            }
+            cashierTapTimer = setTimeout(() => { cashierTapCount = 0; }, 2500);
+        }
+    </script>
 
     {% else %}
     <!-- AUTHENTICATED CASHIER RECEIVER TERMINAL -->
