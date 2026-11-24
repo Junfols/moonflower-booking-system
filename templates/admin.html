@@ -17,6 +17,18 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@500;600&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+    <script>
+        (function(){
+            var d = {{ default_site_theme | default('emerald') | tojson }};
+            var o = '';
+            try { o = localStorage.getItem('mf_theme_override_v1') || ''; } catch (e) {}
+            var valid = ['emerald','lagoon','sunset','midnight','kyoto','gelato'];
+            var def = valid.indexOf(d) !== -1 ? d : 'emerald';
+            var active = valid.indexOf(o) !== -1 ? o : def;
+            document.documentElement.setAttribute('data-theme', active);
+            document.documentElement.setAttribute('data-default-theme', def);
+        })();
+    </script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -62,10 +74,14 @@
                 <a href="/" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">&larr; Customer Portal</a>
                 <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Terminal &rarr;</a>
             </div>
-            <div style="margin-top: 0.85rem; text-align: center;">
-                <button type="button" onclick="openAppQrModal()" class="btn btn-outline btn-sm" style="border-radius: 999px; width: 100%;">
+            <div style="margin-top: 0.85rem; display: flex; gap: 0.5rem;">
+                <button type="button" onclick="openThemeSwitcherModal()" class="btn btn-outline btn-sm" style="border-radius: 999px; flex: 1;">
+                    <span id="themeSwatchDot" class="theme-nav-dot"></span>
+                    <span>Themes</span>
+                </button>
+                <button type="button" onclick="openAppQrModal()" class="btn btn-outline btn-sm" style="border-radius: 999px; flex: 1;">
                     <i class="fa-solid fa-qrcode"></i>
-                    <span>Share App QR Code</span>
+                    <span>Share QR</span>
                 </button>
             </div>
         </div>
@@ -93,6 +109,10 @@
             </div>
 
             <div class="nav-actions">
+                <button type="button" id="adminThemeBtn" onclick="openThemeSwitcherModal()" class="btn btn-outline btn-sm" title="Switch Theme Palette">
+                    <span id="themeSwatchDot" class="theme-nav-dot"></span>
+                    <span>Themes</span>
+                </button>
                 <button type="button" id="adminShareQrBtn" onclick="openAppQrModal()" class="btn btn-outline btn-sm" title="Show App QR Code to Share">
                     <i class="fa-solid fa-qrcode"></i>
                     <span>Share QR</span>
@@ -746,6 +766,19 @@
                     <div class="form-group">
                         <label for="setHeroSubtitle" class="form-label">Resort Tagline / Subtitle</label>
                         <input type="text" id="setHeroSubtitle" value="{{ settings.hero_subtitle }}" required class="form-input">
+                    </div>
+
+                    <div class="form-group" style="padding: 0.9rem 1rem; background: var(--bg-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                        <label for="setSiteTheme" class="form-label"><i class="fa-solid fa-palette" style="color: var(--brand-primary); margin-right: 4px;"></i> Default Resort Color Theme</label>
+                        <select id="setSiteTheme" class="form-select" onchange="if (window.applyMoonflowerTheme) applyMoonflowerTheme(this.value, false);">
+                            <option value="emerald" {% if settings.get('site_theme', 'emerald') == 'emerald' %}selected{% endif %}>Botanical Emerald (Classic Resort &amp; Garden)</option>
+                            <option value="lagoon" {% if settings.get('site_theme') == 'lagoon' %}selected{% endif %}>Seafront Lagoon (Camiguin Ocean Teal)</option>
+                            <option value="sunset" {% if settings.get('site_theme') == 'sunset' %}selected{% endif %}>Tropical Sunset (Terracotta &amp; Mango Gold)</option>
+                            <option value="midnight" {% if settings.get('site_theme') == 'midnight' %}selected{% endif %}>Midnight Bar Lounge (Dark Mode &amp; Gold)</option>
+                            <option value="kyoto" {% if settings.get('site_theme') == 'kyoto' %}selected{% endif %}>Kyoto Fusion Bistro (Washi Charcoal &amp; Crimson)</option>
+                            <option value="gelato" {% if settings.get('site_theme') == 'gelato' %}selected{% endif %}>Matcha &amp; Berry (Garden Cafe &amp; Ice Cream)</option>
+                        </select>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Guests &amp; staff see this default theme automatically, or can temporarily pick their own from the top Themes button.</small>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -1680,9 +1713,11 @@
 
         async function saveSiteSettings(e) {
             e.preventDefault();
+            const selectedTheme = document.getElementById('setSiteTheme') ? document.getElementById('setSiteTheme').value : 'emerald';
             const payload = {
                 hero_title: document.getElementById('setHeroTitle').value,
                 hero_subtitle: document.getElementById('setHeroSubtitle').value,
+                site_theme: selectedTheme,
                 contact_phone: document.getElementById('setContactPhone').value,
                 gcash_number: document.getElementById('setGcashNumber').value,
                 gcash_qr_image: document.getElementById('setGcashQrImage').value,
@@ -1699,7 +1734,10 @@
             });
             const data = await res.json();
             if (res.ok) {
-                showToast('Banner photos & site settings updated!');
+                document.documentElement.setAttribute('data-default-theme', selectedTheme);
+                try { localStorage.removeItem('mf_theme_override_v1'); } catch (err) {}
+                if (window.applyMoonflowerTheme) window.applyMoonflowerTheme(selectedTheme, false);
+                showToast('Banner photos, theme & site settings updated!');
             } else {
                 showToast(data.error || 'Error updating settings.', true);
             }
@@ -1740,5 +1778,6 @@
     {% endif %}
     <script src="/static/qrcode.js"></script>
     <script src="/static/qr-share.js"></script>
+    <script src="/static/theme-switcher.js"></script>
 </body>
 </html>

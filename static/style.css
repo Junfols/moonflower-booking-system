@@ -44,6 +44,19 @@
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
+  /* Theme-Dynamic Surface & Brand Helpers */
+  --brand-primary-fg: #FFFFFF;
+  --brand-accent-fg: #FFFFFF;
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --input-bg: #F5F3EE;
+  --slot-bg: #FFFFFF;
+  --hover-tint: rgba(16, 55, 42, 0.024);
+  --emblem-gradient: linear-gradient(145deg, #10372A 0%, #1F5744 100%);
+  --hero-gradient:
+    radial-gradient(circle at 86% 18%, rgba(242, 206, 134, 0.22), transparent 44%),
+    radial-gradient(circle at 15% 10%, rgba(45, 118, 92, 0.35), transparent 50%),
+    linear-gradient(135deg, #0E3125 0%, #154636 52%, #1D5A45 100%);
+
   /* Soft Layered Editorial Shadows */
   --shadow-xs: 0 1px 2px rgba(16, 55, 42, 0.04);
   --shadow-sm: 0 2px 8px rgba(16, 55, 42, 0.04), 0 8px 20px -6px rgba(16, 55, 42, 0.06);
@@ -55,6 +68,165 @@
   --radius-lg: 20px;
   --radius-xl: 26px;
   --transition: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 2. Seafront Lagoon (Camiguin Ocean Teal) */
+html[data-theme="lagoon"] {
+  --bg-canvas: #F2F7F8;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #E4EEF0;
+  --bg-elevated: #F7FBFC;
+  --surface-muted: #EAF2F4;
+  --brand-primary: #0F4C5C;
+  --brand-primary-hover: #156276;
+  --brand-primary-light: #E3F2F5;
+  --brand-accent: #C97A40;
+  --brand-accent-hover: #A8602D;
+  --brand-accent-light: #FDF3EB;
+  --text-primary: #102A33;
+  --text-secondary: #48646E;
+  --text-muted: #6C858E;
+  --border-subtle: rgba(15, 76, 92, 0.10);
+  --border-strong: rgba(15, 76, 92, 0.20);
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --input-bg: #EEF4F5;
+  --hover-tint: rgba(15, 76, 92, 0.03);
+  --emblem-gradient: linear-gradient(145deg, #0B3A47 0%, #17697D 100%);
+  --hero-gradient:
+    radial-gradient(circle at 86% 18%, rgba(255, 214, 170, 0.22), transparent 44%),
+    radial-gradient(circle at 15% 10%, rgba(28, 138, 158, 0.35), transparent 50%),
+    linear-gradient(135deg, #0A3845 0%, #0F4C5C 52%, #166D7D 100%);
+}
+
+/* 3. Tropical Sunset (Terracotta & Golden Mango) */
+html[data-theme="sunset"] {
+  --bg-canvas: #FCF7F1;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #F2E7DC;
+  --bg-elevated: #FDF9F4;
+  --surface-muted: #F5ECE2;
+  --brand-primary: #8A3319;
+  --brand-primary-hover: #A33E20;
+  --brand-primary-light: #FCECE6;
+  --brand-accent: #D97706;
+  --brand-accent-hover: #B45E04;
+  --brand-accent-light: #FEF5E6;
+  --text-primary: #291911;
+  --text-secondary: #684C3E;
+  --text-muted: #8E7162;
+  --border-subtle: rgba(124, 45, 18, 0.10);
+  --border-strong: rgba(124, 45, 18, 0.20);
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --input-bg: #F6EFE7;
+  --hover-tint: rgba(138, 51, 25, 0.03);
+  --emblem-gradient: linear-gradient(145deg, #6E2311 0%, #B34822 100%);
+  --hero-gradient:
+    radial-gradient(circle at 86% 18%, rgba(253, 224, 145, 0.26), transparent 45%),
+    radial-gradient(circle at 15% 10%, rgba(217, 119, 6, 0.32), transparent 50%),
+    linear-gradient(135deg, #6E2311 0%, #993718 52%, #C2531C 100%);
+}
+
+/* 4. Midnight Bar Lounge (Obsidian Dark Mode & Gold) */
+html[data-theme="midnight"] {
+  --bg-canvas: #0E1312;
+  --bg-surface: #17201E;
+  --bg-subtle: #202C29;
+  --bg-elevated: #1C2623;
+  --surface-muted: #1E2825;
+  --brand-primary: #E2B76A;
+  --brand-primary-hover: #EBC680;
+  --brand-primary-light: rgba(226, 183, 106, 0.16);
+  --brand-primary-fg: #121816;
+  --brand-accent: #34D399;
+  --brand-accent-hover: #4ADEAC;
+  --brand-accent-light: rgba(52, 211, 153, 0.15);
+  --brand-accent-fg: #0D1B16;
+  --text-primary: #F4EFE6;
+  --text-secondary: #B4C2BC;
+  --text-muted: #84968F;
+  --border-subtle: rgba(244, 239, 230, 0.10);
+  --border-strong: rgba(226, 183, 106, 0.28);
+  --header-bg: rgba(16, 22, 20, 0.88);
+  --input-bg: #222E2A;
+  --slot-bg: #1F2A27;
+  --hover-tint: rgba(226, 183, 106, 0.06);
+  --emblem-gradient: linear-gradient(145deg, #1B332A 0%, #27483C 100%);
+  --hero-gradient:
+    radial-gradient(circle at 86% 18%, rgba(226, 183, 106, 0.22), transparent 46%),
+    radial-gradient(circle at 15% 10%, rgba(52, 211, 153, 0.18), transparent 52%),
+    linear-gradient(135deg, #111A17 0%, #192924 52%, #243831 100%);
+  --status-confirmed-bg: rgba(34, 197, 94, 0.16);
+  --status-confirmed-text: #86EFAC;
+  --status-confirmed-border: rgba(134, 239, 172, 0.30);
+  --status-pending-bg: rgba(245, 158, 11, 0.16);
+  --status-pending-text: #FCD34D;
+  --status-pending-border: rgba(252, 211, 77, 0.30);
+  --status-cancelled-bg: rgba(239, 68, 68, 0.16);
+  --status-cancelled-text: #FCA5A5;
+  --status-cancelled-border: rgba(252, 165, 165, 0.30);
+  --status-completed-bg: rgba(96, 165, 250, 0.16);
+  --status-completed-text: #93C5FD;
+  --status-completed-border: rgba(147, 197, 253, 0.30);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.34);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.44);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.56);
+}
+
+/* 5. Kyoto Fusion Bistro (Washi Charcoal & Crimson) */
+html[data-theme="kyoto"] {
+  --bg-canvas: #F8F6F1;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #EAE6DE;
+  --bg-elevated: #FAF8F4;
+  --surface-muted: #EFECE5;
+  --brand-primary: #23211E;
+  --brand-primary-hover: #383430;
+  --brand-primary-light: #EAE7E1;
+  --brand-accent: #B91C1C;
+  --brand-accent-hover: #991B1B;
+  --brand-accent-light: #FEECEC;
+  --text-primary: #1F1D1A;
+  --text-secondary: #5E5951;
+  --text-muted: #847E75;
+  --border-subtle: rgba(35, 33, 30, 0.10);
+  --border-strong: rgba(35, 33, 30, 0.20);
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --input-bg: #F3F0EA;
+  --hover-tint: rgba(35, 33, 30, 0.03);
+  --emblem-gradient: linear-gradient(145deg, #1E1C19 0%, #3E3933 100%);
+  --hero-gradient:
+    radial-gradient(circle at 86% 18%, rgba(220, 38, 38, 0.22), transparent 45%),
+    radial-gradient(circle at 15% 10%, rgba(180, 140, 80, 0.22), transparent 50%),
+    linear-gradient(135deg, #1A1815 0%, #2C2722 52%, #3D352E 100%);
+}
+
+/* 6. Botanical Matcha & Berry (Garden Cafe & Homemade Ice Cream) */
+html[data-theme="gelato"] {
+  --bg-canvas: #FBF9F5;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #EFEBE2;
+  --bg-elevated: #FCFBF8;
+  --surface-muted: #F4F0E8;
+  --brand-primary: #2D5A43;
+  --brand-primary-hover: #3B7356;
+  --brand-primary-light: #E8F4ED;
+  --brand-accent: #C04862;
+  --brand-accent-hover: #9E374D;
+  --brand-accent-light: #FCEBEF;
+  --text-primary: #1D2922;
+  --text-secondary: #53665B;
+  --text-muted: #788C80;
+  --border-subtle: rgba(45, 90, 67, 0.10);
+  --border-strong: rgba(45, 90, 67, 0.20);
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --input-bg: #F4F1EA;
+  --hover-tint: rgba(45, 90, 67, 0.03);
+  --emblem-gradient: linear-gradient(145deg, #244936 0%, #3D7356 100%);
+  --hero-gradient:
+    radial-gradient(circle at 86% 18%, rgba(244, 166, 184, 0.24), transparent 46%),
+    radial-gradient(circle at 15% 10%, rgba(110, 184, 138, 0.26), transparent 50%),
+    linear-gradient(135deg, #214332 0%, #2D5A43 52%, #3D7356 100%);
 }
 
 *, *::before, *::after {
@@ -111,7 +283,7 @@ body {
 
 /* Frosted Glass Navbar */
 .site-header {
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--header-bg);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--border-subtle);
@@ -141,7 +313,7 @@ body {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: linear-gradient(145deg, #10372A 0%, #1F5744 100%);
+  background: var(--emblem-gradient);
   color: #F0D29A;
   display: flex;
   align-items: center;
@@ -199,10 +371,7 @@ body {
   min-height: 330px;
   display: flex;
   align-items: flex-end;
-  background:
-    radial-gradient(circle at 86% 18%, rgba(242, 206, 134, 0.22), transparent 44%),
-    radial-gradient(circle at 15% 10%, rgba(45, 118, 92, 0.35), transparent 50%),
-    linear-gradient(135deg, #0E3125 0%, #154636 52%, #1D5A45 100%);
+  background: var(--hero-gradient);
   box-shadow: var(--shadow-md);
 }
 
@@ -406,8 +575,8 @@ body {
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-primary);
-  background: #F5F3EE;
-  border: 1px solid rgba(20, 31, 27, 0.09);
+  background: var(--input-bg);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 0.65rem 0.9rem;
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
@@ -430,7 +599,7 @@ body {
   outline: none;
   background: var(--bg-surface);
   border-color: var(--brand-primary);
-  box-shadow: 0 0 0 3.5px rgba(16, 55, 42, 0.09);
+  box-shadow: 0 0 0 3.5px var(--brand-primary-light);
 }
 
 /* Polished Buttons */
@@ -468,7 +637,7 @@ body {
 
 .btn-primary {
   background: var(--brand-primary);
-  color: #fff;
+  color: var(--brand-primary-fg);
   box-shadow: 0 2px 6px rgba(16, 55, 42, 0.16);
 }
 
@@ -480,7 +649,7 @@ body {
 
 .btn-accent {
   background: var(--brand-accent);
-  color: #fff;
+  color: var(--brand-accent-fg);
   box-shadow: 0 2px 6px rgba(184, 118, 38, 0.18);
 }
 
@@ -657,10 +826,11 @@ body {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-surface);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
   font-size: 0.72rem;
   font-weight: 600;
   padding: 0.3rem 0.7rem;
@@ -752,11 +922,11 @@ body {
   padding: 0.72rem 1.15rem;
   border-radius: 999px;
   background: var(--brand-primary);
-  color: #fff;
+  color: var(--brand-primary-fg);
   font-family: var(--font-sans);
   font-size: 0.86rem;
   font-weight: 600;
-  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border: 1.5px solid var(--border-strong);
   box-shadow: var(--shadow-lg);
   cursor: pointer;
   transition: transform var(--transition), background var(--transition);
@@ -773,7 +943,7 @@ body {
   padding: 0 7px;
   border-radius: 999px;
   background: var(--brand-accent);
-  color: #fff;
+  color: var(--brand-accent-fg);
   font-size: 0.75rem;
   font-weight: 700;
   display: inline-flex;
@@ -1086,7 +1256,7 @@ body {
 
 .filter-pill.active {
   background: var(--brand-primary);
-  color: #fff;
+  color: var(--brand-primary-fg);
   border-color: var(--brand-primary);
   box-shadow: 0 2px 8px rgba(16, 55, 42, 0.16);
 }
@@ -1123,7 +1293,7 @@ body {
 }
 
 .data-table tbody tr:hover {
-  background: rgba(16, 55, 42, 0.024);
+  background: var(--hover-tint);
 }
 
 /* Visual Table & Seating Slot Grid */
@@ -1142,12 +1312,92 @@ body {
   padding: 0.55rem 0.68rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
-  background: #fff;
+  background: var(--slot-bg);
+  color: var(--text-primary);
   cursor: pointer;
   font-family: var(--font-sans);
   font-size: 0.76rem;
   text-align: left;
   transition: all 150ms ease;
+}
+
+/* Shared Interactive Theme Switcher UI */
+.theme-nav-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  border: 1.5px solid var(--border-strong);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.theme-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.theme-option-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.72rem 0.78rem;
+  border-radius: 14px;
+  border: 1.5px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  min-width: 0;
+  transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.theme-option-card:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-surface);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-xs);
+}
+
+.theme-option-card.is-selected {
+  border-color: var(--brand-primary);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 2px var(--brand-primary-light), var(--shadow-sm);
+}
+
+.theme-swatch-strip {
+  display: flex;
+  flex-direction: column;
+  width: 22px;
+  height: 36px;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+.theme-swatch-chip {
+  flex: 1;
+  display: block;
+}
+
+.theme-default-tag {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--brand-accent);
+  background: var(--brand-accent-light);
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+}
+
+@media (max-width: 520px) {
+  .theme-picker-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .table-slot-btn:hover {

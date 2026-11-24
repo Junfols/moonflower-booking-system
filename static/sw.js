@@ -1,8 +1,9 @@
-const CACHE_NAME = 'moonflower-pwa-v13';
+const CACHE_NAME = 'moonflower-pwa-v14';
 const STATIC_ASSETS = [
   '/static/style.css',
   '/static/qrcode.js',
   '/static/qr-share.js',
+  '/static/theme-switcher.js',
   '/static/manifest.json',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png'

@@ -285,7 +285,8 @@ DEFAULT_SITE_SETTINGS = {
     'gcash_number': '0997-992-2352 (MoonFlower Garden)',
     'gcash_qr_image': '',
     'address': 'Baylao, Mambajao, Camiguin 9100, Philippines',
-    'contact_email': 'moonflowergarden2021@gmail.com'
+    'contact_email': 'moonflowergarden2021@gmail.com',
+    'site_theme': 'emerald'
 }
 
 
@@ -433,6 +434,20 @@ def get_public_settings():
         if s.get(k):
             s[k] = _media_url_or_raw(s[k], f"/api/media/setting/{k}")
     return s
+
+
+VALID_SITE_THEMES = ('emerald', 'lagoon', 'sunset', 'midnight', 'kyoto', 'gelato')
+
+
+@app.context_processor
+def inject_theme_context():
+    try:
+        theme = (get_site_settings(use_cache=True).get('site_theme') or 'emerald').strip().lower()
+    except Exception:
+        theme = 'emerald'
+    if theme not in VALID_SITE_THEMES:
+        theme = 'emerald'
+    return {'default_site_theme': theme}
 
 
 def record_audit(actor_role, actor_name, action_type, reference_code, details):
@@ -2077,9 +2092,13 @@ def save_site_settings():
         return jsonify({'error': 'Unauthorized'}), 401
 
     payload = request.json or {}
-    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number', 'gcash_qr_image', 'address', 'contact_email'):
+    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number', 'gcash_qr_image', 'address', 'contact_email', 'site_theme'):
         if key in payload:
             raw_val = (payload.get(key) or '').strip()
+            if key == 'site_theme':
+                raw_val = raw_val.lower()
+                if raw_val not in VALID_SITE_THEMES:
+                    return jsonify({'error': 'Invalid theme selection.'}), 400
             if key in ('hero_image', 'dining_image', 'gcash_qr_image') and raw_val.startswith('/api/media/'):
                 continue
             val = sanitize_payment_proof(raw_val) if key == 'gcash_qr_image' else raw_val

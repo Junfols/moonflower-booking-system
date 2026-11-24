@@ -21,6 +21,18 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@500;600&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+    <script>
+        (function(){
+            var d = {{ default_site_theme | default('emerald') | tojson }};
+            var o = '';
+            try { o = localStorage.getItem('mf_theme_override_v1') || ''; } catch (e) {}
+            var valid = ['emerald','lagoon','sunset','midnight','kyoto','gelato'];
+            var def = valid.indexOf(d) !== -1 ? d : 'emerald';
+            var active = valid.indexOf(o) !== -1 ? o : def;
+            document.documentElement.setAttribute('data-theme', active);
+            document.documentElement.setAttribute('data-default-theme', def);
+        })();
+    </script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -42,6 +54,10 @@
                 <button type="button" onclick="handleInstallAppClick()" class="btn btn-primary btn-sm" id="installAppBtn">
                     <i class="fa-solid fa-download"></i>
                     <span>Install App</span>
+                </button>
+                <button type="button" onclick="openThemeSwitcherModal()" class="btn btn-outline btn-sm" id="themeSwitcherBtn" title="Switch Theme Palette">
+                    <span id="themeSwatchDot" class="theme-nav-dot"></span>
+                    <span>Themes</span>
                 </button>
                 <button type="button" onclick="openAppQrModal()" class="btn btn-outline btn-sm" id="shareAppQrBtn" title="Show QR Code to Share App">
                     <i class="fa-solid fa-qrcode"></i>
@@ -1574,5 +1590,6 @@
     </script>
     <script src="/static/qrcode.js"></script>
     <script src="/static/qr-share.js"></script>
+    <script src="/static/theme-switcher.js"></script>
 </body>
 </html>
