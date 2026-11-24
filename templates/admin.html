@@ -441,7 +441,13 @@
                                     <span class="status-badge {% if fb.payment_status == 'paid' %}status-confirmed{% elif fb.payment_status == 'partial' %}status-pending{% else %}status-cancelled{% endif %}">
                                         {{ fb.payment_status.upper() }}
                                     </span>
+                                    {% if fb.payment_plan == 'downpayment' %}
+                                    <div style="font-size: 0.71rem; color: var(--brand-accent); font-weight: 700; margin-top: 2px;">DP Req: ₱{{ fb.downpayment_amount }}</div>
+                                    {% endif %}
                                     <div style="font-size: 0.78rem; font-weight: 700; margin-top: 2px;">Paid: ₱{{ fb.amount_paid }}</div>
+                                    {% if fb.remaining_balance_raw > 0 and fb.status != 'cancelled' %}
+                                    <div style="font-size: 0.72rem; color: var(--brand-primary); font-weight: 600;">Bal: ₱{{ fb.remaining_balance }}</div>
+                                    {% endif %}
                                     <div style="font-size: 0.72rem; color: var(--text-muted);">{{ fb.payment_method }} {% if fb.payment_ref %}({{ fb.payment_ref }}){% endif %}</div>
                                     {% if fb.has_payment_proof %}
                                     <div style="margin-top: 3px;">
@@ -551,7 +557,13 @@
                                     <span class="status-badge {% if b.payment_status == 'paid' %}status-confirmed{% elif b.payment_status == 'partial' %}status-pending{% else %}status-cancelled{% endif %}">
                                         {{ b.payment_status.upper() }}
                                     </span>
+                                    {% if b.payment_plan == 'downpayment' %}
+                                    <div style="font-size: 0.71rem; color: var(--brand-accent); font-weight: 700; margin-top: 2px;">DP Req: ₱{{ b.downpayment_amount }}</div>
+                                    {% endif %}
                                     <div style="font-size: 0.78rem; font-weight: 700; margin-top: 2px;">Paid: ₱{{ b.amount_paid }}</div>
+                                    {% if b.remaining_balance_raw > 0 and b.status != 'cancelled' %}
+                                    <div style="font-size: 0.72rem; color: var(--brand-primary); font-weight: 600;">Bal: ₱{{ b.remaining_balance }}</div>
+                                    {% endif %}
                                     <div style="font-size: 0.72rem; color: var(--text-muted);">{{ b.payment_method }} {% if b.payment_ref %}({{ b.payment_ref }}){% endif %}</div>
                                     {% if b.has_payment_proof %}
                                     <div style="margin-top: 3px;">
@@ -781,6 +793,18 @@
                         <small style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Guests &amp; staff see this default theme automatically, or can temporarily pick their own from the top Themes button.</small>
                     </div>
 
+                    <div class="form-group" style="padding: 0.9rem 1rem; background: var(--bg-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                        <label for="setDownpaymentPercent" class="form-label"><i class="fa-solid fa-bookmark" style="color: var(--brand-accent); margin-right: 4px;"></i> Reservation Downpayment Percentage (%)</label>
+                        <select id="setDownpaymentPercent" class="form-select">
+                            <option value="20" {% if settings.get('downpayment_percent', '50') == '20' %}selected{% endif %}>20% Reservation Downpayment (80% Balance on Arrival)</option>
+                            <option value="30" {% if settings.get('downpayment_percent', '50') == '30' %}selected{% endif %}>30% Reservation Downpayment (70% Balance on Arrival)</option>
+                            <option value="50" {% if settings.get('downpayment_percent', '50') == '50' %}selected{% endif %}>50% Reservation Downpayment (Recommended • 50% on Arrival)</option>
+                            <option value="70" {% if settings.get('downpayment_percent', '50') == '70' %}selected{% endif %}>70% Reservation Downpayment (30% Balance on Arrival)</option>
+                            <option value="100" {% if settings.get('downpayment_percent', '50') == '100' %}selected{% endif %}>100% Full Upfront Online Payment Only</option>
+                        </select>
+                        <small style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Automatically calculates exact downpayment amount when customers book rooms or dining reservations.</small>
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label for="setContactPhone" class="form-label">Front Desk Contact Number</label>
@@ -978,13 +1002,16 @@
                 <input type="hidden" id="procBookingType">
                 <input type="hidden" id="procItemId">
                 <input type="hidden" id="procTotalBillRaw">
+                <input type="hidden" id="procTotalDpRaw">
+
+                <div id="procDpPlanBanner" class="hidden" style="padding: 0.65rem 0.85rem; border-radius: var(--radius-md); background: var(--brand-accent-light); border: 1px solid var(--status-pending-border); font-size: 0.8rem; color: var(--brand-primary); font-weight: 600;"></div>
 
                 <div class="form-group" id="procAssignedTableGroup" style="padding: 0.85rem; background: var(--brand-accent-light); border-radius: var(--radius-md); border: 1px solid var(--status-pending-border);">
                     <label for="procAssignedTable" class="form-label" style="color: var(--brand-primary);">
                         <i class="fa-solid fa-chair"></i> Select Available Table &amp; Chairs *
                     </label>
                     <div id="procTableSlotGrid" class="table-slot-grid" style="margin-bottom: 0.6rem;"></div>
-                    <input type="text" id="procAssignedTable" oninput="updateModalSmsHref()" placeholder="e.g. Garden Table 2 — 5 Chairs Reserved" class="form-input" style="background: #fff;">
+                    <input type="text" id="procAssignedTable" oninput="updateModalSmsHref()" placeholder="e.g. Garden Table 2 — 5 Chairs Reserved" class="form-input" style="background: var(--bg-surface);">
                 </div>
 
                 <div id="procProofWrap" class="hidden" style="padding: 0.75rem; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
@@ -1030,6 +1057,7 @@
                         <label for="procAmountPaid" class="form-label">Amount Paid (₱) *</label>
                         <div style="display: flex; gap: 0.35rem;">
                             <input type="number" id="procAmountPaid" min="0" step="0.01" value="0" required class="form-input">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="fillDownpaymentAmount()" title="Verify Downpayment Only (Partial)">DP</button>
                             <button type="button" class="btn btn-outline btn-sm" onclick="fillFullBillAmount()">Full</button>
                         </div>
                     </div>
@@ -1415,13 +1443,29 @@
             });
         }
 
+        let currentReservationDpPercent = Math.max(10, Math.min(100, parseInt({{ settings.get('downpayment_percent', '50') | tojson }}, 10) || 50));
+
         function buildConfirmationMessage(type, b, statusOverride = null, tableOverride = null) {
             const st = (statusOverride || b.status || 'confirmed').toUpperCase();
+            const paidEl = document.getElementById('procAmountPaid');
+            const totalRaw = Number(b.total_price_raw || 0);
+            const curPaid = (paidEl && currentProcessBooking && currentProcessBooking.id === b.id)
+                ? Number(paidEl.value || 0)
+                : Number(b.amount_paid_raw || 0);
+            const curBal = Math.max(0, totalRaw - curPaid);
+            let paySummary = '';
+            if (curPaid > 0 && curBal > 0) {
+                paySummary = ` Downpayment Paid: ₱${curPaid.toLocaleString()} (Remaining Balance: ₱${curBal.toLocaleString()}).`;
+            } else if (curPaid >= totalRaw && totalRaw > 0) {
+                paySummary = ` Fully Paid: ₱${curPaid.toLocaleString()}.`;
+            } else if (b.payment_plan === 'downpayment' && Number(b.downpayment_amount_raw || 0) > 0) {
+                paySummary = ` Reservation Downpayment Due: ₱${b.downpayment_amount}.`;
+            }
             if (type === 'food') {
                 const tbl = tableOverride || b.assigned_table || `${b.seating_area || 'Dine-in'} — ${b.pax} Chairs Reserved`;
-                return `Hi ${b.customer_name}! Your MoonFlower Garden table & food booking (${b.reference_code}) for ${b.booking_date} at ${b.arrival_time} is ${st}. Assigned Setup: ${tbl}. Total: ₱${b.total_price}. See you in Camiguin!`;
+                return `Hi ${b.customer_name}! Your MoonFlower Garden table & food booking (${b.reference_code}) for ${b.booking_date} at ${b.arrival_time} is ${st}. Assigned Setup: ${tbl}. Total: ₱${b.total_price}.${paySummary} See you in Camiguin!`;
             }
-            return `Hi ${b.customer_name}! Your MoonFlower Garden room booking (${b.reference_code}) for Room ${b.room_number} (${b.check_in_date} to ${b.check_out_date}) is ${st}. Total: ₱${b.total_price}. See you in Camiguin!`;
+            return `Hi ${b.customer_name}! Your MoonFlower Garden room booking (${b.reference_code}) for Room ${b.room_number} (${b.check_in_date} to ${b.check_out_date}) is ${st}. Total: ₱${b.total_price}.${paySummary} See you in Camiguin!`;
         }
 
         function copyConfirmationText(text) {
@@ -1466,7 +1510,23 @@
             document.getElementById('procBookingType').value = type;
             document.getElementById('procItemId').value = b.id;
             document.getElementById('procTotalBillRaw').value = b.total_price_raw || 0;
+            document.getElementById('procTotalDpRaw').value = b.downpayment_amount_raw || 0;
             document.getElementById('procModalTitle').innerText = `${b.reference_code} — ${b.customer_name}`;
+
+            const dpBanner = document.getElementById('procDpPlanBanner');
+            if (dpBanner) {
+                const balNum = Number(b.remaining_balance_raw ?? Math.max(0, (b.total_price_raw || 0) - (b.amount_paid_raw || 0)));
+                if (b.payment_plan === 'downpayment') {
+                    dpBanner.innerHTML = `<i class="fa-solid fa-bookmark" style="margin-right:5px;"></i> Requested Plan: <strong>Reservation Downpayment (₱${escapeHtml(b.downpayment_amount)})</strong> &bull; Remaining Balance: <strong>₱${balNum.toLocaleString()}</strong>`;
+                    dpBanner.classList.remove('hidden');
+                } else if (b.payment_plan === 'onsite') {
+                    dpBanner.innerHTML = `<i class="fa-solid fa-store" style="margin-right:5px;"></i> Requested Plan: <strong>Pay at Moonflower (On Arrival)</strong> &bull; Balance Due: <strong>₱${escapeHtml(b.total_price)}</strong>`;
+                    dpBanner.classList.remove('hidden');
+                } else {
+                    dpBanner.innerHTML = '';
+                    dpBanner.classList.add('hidden');
+                }
+            }
 
             const tableGroup = document.getElementById('procAssignedTableGroup');
             if (type === 'food') {
@@ -1499,6 +1559,20 @@
             updateModalSmsHref();
 
             document.getElementById('processBookingModal').classList.remove('hidden');
+        }
+
+        function fillDownpaymentAmount() {
+            const totalRaw = parseFloat(document.getElementById('procTotalBillRaw').value || 0);
+            let dpRaw = parseFloat(document.getElementById('procTotalDpRaw').value || 0);
+            if (dpRaw <= 0 || dpRaw >= totalRaw) {
+                dpRaw = Math.round((totalRaw * (currentReservationDpPercent / 100)) * 100) / 100;
+            }
+            if (dpRaw > 0) {
+                document.getElementById('procAmountPaid').value = dpRaw;
+                document.getElementById('procPaymentStatus').value = (dpRaw >= totalRaw && totalRaw > 0) ? 'paid' : 'partial';
+                document.getElementById('procStatus').value = 'confirmed';
+                updateModalSmsHref();
+            }
         }
 
         function fillFullBillAmount() {
@@ -1714,10 +1788,12 @@
         async function saveSiteSettings(e) {
             e.preventDefault();
             const selectedTheme = document.getElementById('setSiteTheme') ? document.getElementById('setSiteTheme').value : 'emerald';
+            const selectedDpPct = document.getElementById('setDownpaymentPercent') ? document.getElementById('setDownpaymentPercent').value : String(currentReservationDpPercent);
             const payload = {
                 hero_title: document.getElementById('setHeroTitle').value,
                 hero_subtitle: document.getElementById('setHeroSubtitle').value,
                 site_theme: selectedTheme,
+                downpayment_percent: selectedDpPct,
                 contact_phone: document.getElementById('setContactPhone').value,
                 gcash_number: document.getElementById('setGcashNumber').value,
                 gcash_qr_image: document.getElementById('setGcashQrImage').value,
@@ -1734,10 +1810,11 @@
             });
             const data = await res.json();
             if (res.ok) {
+                currentReservationDpPercent = parseInt(selectedDpPct, 10) || currentReservationDpPercent;
                 document.documentElement.setAttribute('data-default-theme', selectedTheme);
                 try { localStorage.removeItem('mf_theme_override_v1'); } catch (err) {}
                 if (window.applyMoonflowerTheme) window.applyMoonflowerTheme(selectedTheme, false);
-                showToast('Banner photos, theme & site settings updated!');
+                showToast('Banner photos, downpayment & site settings updated!');
             } else {
                 showToast(data.error || 'Error updating settings.', true);
             }

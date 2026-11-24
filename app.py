@@ -232,6 +232,8 @@ class RoomBooking(db.Model):
     status = db.Column(db.String(20), default='pending')
     payment_status = db.Column(db.String(30), default='unpaid')
     payment_method = db.Column(db.String(40), default='GCash')
+    payment_plan = db.Column(db.String(30), default='full')
+    downpayment_amount = db.Column(db.Float, default=0.0)
     amount_paid = db.Column(db.Float, default=0.0)
     payment_ref = db.Column(db.String(100), default='')
     payment_proof = db.Column(db.Text, default='')
@@ -269,6 +271,8 @@ class FoodBooking(db.Model):
     status = db.Column(db.String(20), default='pending')
     payment_status = db.Column(db.String(30), default='unpaid')
     payment_method = db.Column(db.String(40), default='GCash')
+    payment_plan = db.Column(db.String(30), default='full')
+    downpayment_amount = db.Column(db.Float, default=0.0)
     amount_paid = db.Column(db.Float, default=0.0)
     payment_ref = db.Column(db.String(100), default='')
     payment_proof = db.Column(db.Text, default='')
@@ -286,8 +290,17 @@ DEFAULT_SITE_SETTINGS = {
     'gcash_qr_image': '',
     'address': 'Baylao, Mambajao, Camiguin 9100, Philippines',
     'contact_email': 'moonflowergarden2021@gmail.com',
-    'site_theme': 'emerald'
+    'site_theme': 'emerald',
+    'downpayment_percent': '50'
 }
+
+
+def get_downpayment_percent():
+    try:
+        pct = int(float(get_site_settings(use_cache=True).get('downpayment_percent') or 50))
+    except (TypeError, ValueError):
+        pct = 50
+    return max(10, min(100, pct))
 
 
 REAL_MOONFLOWER_MENU = [
@@ -477,12 +490,16 @@ def ensure_schema_columns():
         ('room_bookings', 'notes', "TEXT DEFAULT ''"),
         ('room_bookings', 'payment_status', "VARCHAR(30) DEFAULT 'unpaid'"),
         ('room_bookings', 'payment_method', "VARCHAR(40) DEFAULT 'GCash'"),
+        ('room_bookings', 'payment_plan', "VARCHAR(30) DEFAULT 'full'"),
+        ('room_bookings', 'downpayment_amount', "FLOAT DEFAULT 0.0"),
         ('room_bookings', 'amount_paid', "FLOAT DEFAULT 0.0"),
         ('room_bookings', 'payment_ref', "VARCHAR(100) DEFAULT ''"),
         ('room_bookings', 'payment_proof', "TEXT DEFAULT ''"),
         ('room_bookings', 'handled_by', "VARCHAR(100) DEFAULT ''"),
         ('room_bookings', 'updated_at_ph', "VARCHAR(40) DEFAULT ''"),
         ('food_bookings', 'seating_area', "VARCHAR(60) DEFAULT 'Dine-in (Indoor)'"),
+        ('food_bookings', 'payment_plan', "VARCHAR(30) DEFAULT 'full'"),
+        ('food_bookings', 'downpayment_amount', "FLOAT DEFAULT 0.0"),
         ('food_bookings', 'payment_proof', "TEXT DEFAULT ''"),
     ]
 
@@ -941,6 +958,7 @@ def book_room():
     phone = (payload.get('phone') or '').strip()
     notes = (payload.get('notes') or '').strip()
     payment_method = (payload.get('payment_method') or 'GCash').strip()
+    raw_plan = (payload.get('payment_plan') or '').strip().lower()
     payment_ref = (payload.get('payment_ref') or '').strip()
     payment_proof = sanitize_payment_proof(payload.get('payment_proof'))
     if payment_proof is None:
@@ -972,7 +990,22 @@ def book_room():
         return jsonify({'error': 'Room not found.'}), 404
 
     nights = (check_out - check_in).days
-    total_price = nights * room.price_per_night
+    total_price = float(nights * room.price_per_night)
+    dp_percent = get_downpayment_percent()
+    if raw_plan in ('downpayment', 'full', 'onsite'):
+        payment_plan = raw_plan
+    elif 'pay at moonflower' in payment_method.lower() or 'onsite' in payment_method.lower():
+        payment_plan = 'onsite'
+    else:
+        payment_plan = 'full'
+
+    if payment_plan == 'downpayment':
+        dp_amount = round(total_price * (dp_percent / 100.0), 2)
+    elif payment_plan == 'full':
+        dp_amount = round(total_price, 2)
+    else:
+        dp_amount = 0.0
+    balance_after_dp = round(max(0.0, total_price - dp_amount), 2)
     ts_ph = now_ph_str()
 
     new_booking = RoomBooking(
@@ -986,6 +1019,8 @@ def book_room():
         status='pending',
         payment_status='unpaid',
         payment_method=payment_method,
+        payment_plan=payment_plan,
+        downpayment_amount=dp_amount,
         amount_paid=0.0,
         payment_ref=payment_ref,
         payment_proof=payment_proof,
@@ -997,12 +1032,13 @@ def book_room():
 
     ref_code = f"MF-RM-{new_booking.id:04d}"
     proof_note = ' | Screenshot Proof Attached' if payment_proof else ''
+    dp_note = f" [{dp_percent}% Downpayment Due: ₱{dp_amount:,.2f} | Balance: ₱{balance_after_dp:,.2f}]" if payment_plan == 'downpayment' else ''
     record_audit(
         'CUSTOMER',
         name,
         'NEW_ROOM_BOOKING',
         ref_code,
-        f"Online booking for Room {room.room_number} ({check_in_str} to {check_out_str}), Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}{proof_note}"
+        f"Online booking for Room {room.room_number} ({check_in_str} to {check_out_str}), Total ₱{total_price:,.2f} via {payment_method}{dp_note} {('Ref: ' + payment_ref) if payment_ref else ''}{proof_note}"
     )
 
     return jsonify({
@@ -1017,6 +1053,10 @@ def book_room():
         'check_out': check_out_str,
         'nights': nights,
         'total_price': total_price,
+        'payment_plan': payment_plan,
+        'downpayment_percent': dp_percent if payment_plan == 'downpayment' else (100 if payment_plan == 'full' else 0),
+        'downpayment_amount': dp_amount,
+        'remaining_balance': balance_after_dp if payment_plan == 'downpayment' else (0.0 if payment_plan == 'full' else total_price),
         'payment_method': payment_method,
         'payment_ref': payment_ref,
         'has_payment_proof': bool(payment_proof),
@@ -1038,6 +1078,7 @@ def book_food():
     items = payload.get('items') or []
     notes = (payload.get('notes') or '').strip()
     payment_method = (payload.get('payment_method') or 'GCash').strip()
+    raw_plan = (payload.get('payment_plan') or '').strip().lower()
     payment_ref = (payload.get('payment_ref') or '').strip()
     payment_proof = sanitize_payment_proof(payload.get('payment_proof'))
     if payment_proof is None:
@@ -1078,6 +1119,21 @@ def book_food():
 
     order_summary_str = ", ".join(summary_parts)
     seating_instruction = f"{seating_area} — 1 Table + {pax} Chair{'s' if pax > 1 else ''} (Pending Staff Assignment)"
+    dp_percent = get_downpayment_percent()
+    if raw_plan in ('downpayment', 'full', 'onsite'):
+        payment_plan = raw_plan
+    elif 'pay at moonflower' in payment_method.lower() or 'onsite' in payment_method.lower():
+        payment_plan = 'onsite'
+    else:
+        payment_plan = 'full'
+
+    if payment_plan == 'downpayment':
+        dp_amount = round(total_price * (dp_percent / 100.0), 2)
+    elif payment_plan == 'full':
+        dp_amount = round(total_price, 2)
+    else:
+        dp_amount = 0.0
+    balance_after_dp = round(max(0.0, total_price - dp_amount), 2)
     ts_ph = now_ph_str()
 
     new_food_booking = FoodBooking(
@@ -1095,6 +1151,8 @@ def book_food():
         status='pending',
         payment_status='unpaid',
         payment_method=payment_method,
+        payment_plan=payment_plan,
+        downpayment_amount=dp_amount,
         amount_paid=0.0,
         payment_ref=payment_ref,
         payment_proof=payment_proof,
@@ -1106,12 +1164,13 @@ def book_food():
 
     ref_code = f"MF-FD-{new_food_booking.id:04d}"
     proof_note = ' | Screenshot Proof Attached' if payment_proof else ''
+    dp_note = f" [{dp_percent}% Downpayment Due: ₱{dp_amount:,.2f} | Balance: ₱{balance_after_dp:,.2f}]" if payment_plan == 'downpayment' else ''
     record_audit(
         'CUSTOMER',
         name,
         'NEW_FOOD_BOOKING',
         ref_code,
-        f"Food Booking ({order_summary_str}) for {pax} Guests ({seating_area}: Table + {pax} Chairs) on {date_str} ({arrival_time}) — Total ₱{total_price:,.2f} via {payment_method} {('Ref: ' + payment_ref) if payment_ref else ''}{proof_note}"
+        f"Food Booking ({order_summary_str}) for {pax} Guests ({seating_area}: Table + {pax} Chairs) on {date_str} ({arrival_time}) — Total ₱{total_price:,.2f} via {payment_method}{dp_note} {('Ref: ' + payment_ref) if payment_ref else ''}{proof_note}"
     )
 
     return jsonify({
@@ -1127,6 +1186,10 @@ def book_food():
         'assigned_table': seating_instruction,
         'order_summary': order_summary_str,
         'total_price': total_price,
+        'payment_plan': payment_plan,
+        'downpayment_percent': dp_percent if payment_plan == 'downpayment' else (100 if payment_plan == 'full' else 0),
+        'downpayment_amount': dp_amount,
+        'remaining_balance': balance_after_dp if payment_plan == 'downpayment' else (0.0 if payment_plan == 'full' else total_price),
         'payment_method': payment_method,
         'payment_ref': payment_ref,
         'has_payment_proof': bool(payment_proof),
@@ -1200,6 +1263,11 @@ def lookup_bookings():
             )
 
         for b, r in rb_records:
+            total_val = float(b.total_price or 0)
+            paid_val = float(b.amount_paid or 0)
+            dp_val = float(b.downpayment_amount or 0)
+            bal_val = max(0.0, total_val - paid_val)
+            plan_val = b.payment_plan or ('onsite' if 'pay at moonflower' in (b.payment_method or '').lower() else 'full')
             results.append({
                 'type': 'room',
                 'id': b.id,
@@ -1209,10 +1277,15 @@ def lookup_bookings():
                 'title': f"Room {r.room_number} — {r.room_type}",
                 'subtitle': f"Check-in: {b.check_in_date} → Check-out: {b.check_out_date}",
                 'seating_info': 'Private Resort Room',
-                'amount': f"₱{b.total_price:,.2f}",
+                'amount': f"₱{total_val:,.2f}",
                 'payment_status': (b.payment_status or 'unpaid').upper(),
                 'payment_method': b.payment_method or 'GCash',
-                'amount_paid': f"₱{float(b.amount_paid or 0):,.2f}",
+                'payment_plan': plan_val,
+                'downpayment_amount': f"₱{dp_val:,.2f}",
+                'downpayment_amount_raw': dp_val,
+                'amount_paid': f"₱{paid_val:,.2f}",
+                'remaining_balance': f"₱{bal_val:,.2f}",
+                'remaining_balance_raw': bal_val,
                 'has_payment_proof': bool(b.payment_proof),
                 'handled_by': b.handled_by or 'Pending Review',
                 'updated_at_ph': b.updated_at_ph or '',
@@ -1234,6 +1307,11 @@ def lookup_bookings():
             )
 
         for fb in fb_records:
+            total_val = float(fb.total_price or 0)
+            paid_val = float(fb.amount_paid or 0)
+            dp_val = float(fb.downpayment_amount or 0)
+            bal_val = max(0.0, total_val - paid_val)
+            plan_val = fb.payment_plan or ('onsite' if 'pay at moonflower' in (fb.payment_method or '').lower() else 'full')
             results.append({
                 'type': 'food',
                 'id': fb.id,
@@ -1243,10 +1321,15 @@ def lookup_bookings():
                 'title': f"Food Order: {fb.order_summary}",
                 'subtitle': f"Date: {fb.booking_date} | Arrival: {fb.arrival_time} | {fb.pax} Guests",
                 'seating_info': fb.assigned_table or f"{fb.seating_area or 'Dine-in'} — 1 Table + {fb.pax} Chairs",
-                'amount': f"₱{fb.total_price:,.2f}",
+                'amount': f"₱{total_val:,.2f}",
                 'payment_status': (fb.payment_status or 'unpaid').upper(),
                 'payment_method': fb.payment_method or 'GCash',
-                'amount_paid': f"₱{float(fb.amount_paid or 0):,.2f}",
+                'payment_plan': plan_val,
+                'downpayment_amount': f"₱{dp_val:,.2f}",
+                'downpayment_amount_raw': dp_val,
+                'amount_paid': f"₱{paid_val:,.2f}",
+                'remaining_balance': f"₱{bal_val:,.2f}",
+                'remaining_balance_raw': bal_val,
                 'has_payment_proof': bool(fb.payment_proof),
                 'handled_by': fb.handled_by or 'Pending Review',
                 'updated_at_ph': fb.updated_at_ph or '',
@@ -1370,6 +1453,9 @@ def build_dashboard_context():
                 bucket['confirmed_total'] += price_val
 
         has_rm_proof = b.id in room_proof_ids
+        dp_val = float(b.downpayment_amount or 0)
+        bal_val = max(0.0, price_val - paid_val)
+        plan_val = b.payment_plan or ('onsite' if 'pay at moonflower' in method_lower else 'full')
         room_bookings.append({
             'id': b.id,
             'reference_code': f"MF-RM-{b.id:04d}",
@@ -1383,8 +1469,13 @@ def build_dashboard_context():
             'total_price_raw': price_val,
             'payment_status': b.payment_status or 'unpaid',
             'payment_method': b.payment_method or 'GCash',
+            'payment_plan': plan_val,
+            'downpayment_amount': f"{dp_val:,.2f}",
+            'downpayment_amount_raw': dp_val,
             'amount_paid': f"{paid_val:,.2f}",
             'amount_paid_raw': paid_val,
+            'remaining_balance': f"{bal_val:,.2f}",
+            'remaining_balance_raw': bal_val,
             'payment_ref': b.payment_ref or '',
             'payment_proof': f"/api/bookings/proof/room/{b.id}" if has_rm_proof else '',
             'payment_proof_url': f"/api/bookings/proof/room/{b.id}" if has_rm_proof else '',
@@ -1469,6 +1560,9 @@ def build_dashboard_context():
                 })
 
         has_fb_proof = fb.id in food_proof_ids
+        dp_val = float(fb.downpayment_amount or 0)
+        bal_val = max(0.0, price_val - paid_val)
+        plan_val = fb.payment_plan or ('onsite' if 'pay at moonflower' in method_lower else 'full')
         food_bookings.append({
             'id': fb.id,
             'reference_code': f"MF-FD-{fb.id:04d}",
@@ -1485,8 +1579,13 @@ def build_dashboard_context():
             'total_price_raw': price_val,
             'payment_status': fb.payment_status or 'unpaid',
             'payment_method': fb.payment_method or 'GCash',
+            'payment_plan': plan_val,
+            'downpayment_amount': f"{dp_val:,.2f}",
+            'downpayment_amount_raw': dp_val,
             'amount_paid': f"{paid_val:,.2f}",
             'amount_paid_raw': paid_val,
+            'remaining_balance': f"{bal_val:,.2f}",
+            'remaining_balance_raw': bal_val,
             'payment_ref': fb.payment_ref or '',
             'payment_proof': f"/api/bookings/proof/food/{fb.id}" if has_fb_proof else '',
             'payment_proof_url': f"/api/bookings/proof/food/{fb.id}" if has_fb_proof else '',
@@ -2092,13 +2191,21 @@ def save_site_settings():
         return jsonify({'error': 'Unauthorized'}), 401
 
     payload = request.json or {}
-    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number', 'gcash_qr_image', 'address', 'contact_email', 'site_theme'):
+    for key in ('hero_title', 'hero_subtitle', 'hero_image', 'dining_image', 'contact_phone', 'gcash_number', 'gcash_qr_image', 'address', 'contact_email', 'site_theme', 'downpayment_percent'):
         if key in payload:
-            raw_val = (payload.get(key) or '').strip()
+            raw_val = (str(payload.get(key)) if payload.get(key) is not None else '').strip()
             if key == 'site_theme':
                 raw_val = raw_val.lower()
                 if raw_val not in VALID_SITE_THEMES:
                     return jsonify({'error': 'Invalid theme selection.'}), 400
+            if key == 'downpayment_percent':
+                try:
+                    dp_pct = int(raw_val)
+                except (TypeError, ValueError):
+                    return jsonify({'error': 'Downpayment percentage must be a whole number between 10 and 100.'}), 400
+                if dp_pct < 10 or dp_pct > 100:
+                    return jsonify({'error': 'Downpayment percentage must be between 10% and 100%.'}), 400
+                raw_val = str(dp_pct)
             if key in ('hero_image', 'dining_image', 'gcash_qr_image') and raw_val.startswith('/api/media/'):
                 continue
             val = sanitize_payment_proof(raw_val) if key == 'gcash_qr_image' else raw_val

@@ -305,7 +305,7 @@
             <form id="modalForm" onsubmit="submitBooking(event)" style="display: flex; flex-direction: column; gap: 0.95rem;">
                 <input type="hidden" id="selectedItemId">
                 <input type="hidden" id="selectedBookingType">
-                <input type="hidden" id="selectedPayTiming" value="online">
+                <input type="hidden" id="selectedPayTiming" value="downpayment">
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                     <div class="form-group">
@@ -321,25 +321,36 @@
                 <!-- PAYMENT OPTION CHOICE -->
                 <div class="form-group">
                     <label class="form-label">Choose Payment Option *</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-top: 0.15rem;">
-                        <button type="button" id="payOptOnlineBtn" onclick="selectPaymentTiming('online')"
-                            style="text-align: left; padding: 0.85rem; border-radius: var(--radius-md); border: 2px solid var(--brand-primary); background: var(--brand-primary-light); cursor: pointer; transition: all 150ms ease;">
-                            <div style="font-weight: 700; font-size: 0.86rem; color: var(--brand-primary); display: flex; align-items: center; gap: 0.4rem;">
-                                <i class="fa-solid fa-mobile-screen-button"></i>
-                                <span>Pay Online Now</span>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 0.55rem; margin-top: 0.15rem;">
+                        <button type="button" id="payOptDpBtn" onclick="selectPaymentTiming('downpayment')"
+                            style="text-align: left; padding: 0.75rem; border-radius: var(--radius-md); border: 2px solid var(--brand-primary); background: var(--brand-primary-light); cursor: pointer; transition: all 150ms ease;">
+                            <div style="font-weight: 700; font-size: 0.82rem; color: var(--brand-primary); display: flex; align-items: center; gap: 0.35rem;">
+                                <i class="fa-solid fa-bookmark"></i>
+                                <span>Downpayment ({{ settings.get('downpayment_percent', '50') }}%)</span>
                             </div>
-                            <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                                GCash / Maya / Bank Transfer
+                            <div id="payOptDpSub" style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.22rem;">
+                                Pay partial now to reserve
+                            </div>
+                        </button>
+
+                        <button type="button" id="payOptOnlineBtn" onclick="selectPaymentTiming('online')"
+                            style="text-align: left; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: var(--bg-elevated); cursor: pointer; transition: all 150ms ease;">
+                            <div style="font-weight: 700; font-size: 0.82rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.35rem;">
+                                <i class="fa-solid fa-mobile-screen-button"></i>
+                                <span>Pay Full Online</span>
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.22rem;">
+                                100% GCash / Maya / Bank
                             </div>
                         </button>
 
                         <button type="button" id="payOptOnsiteBtn" onclick="selectPaymentTiming('onsite')"
-                            style="text-align: left; padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: var(--bg-elevated); cursor: pointer; transition: all 150ms ease;">
-                            <div style="font-weight: 700; font-size: 0.86rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem;">
+                            style="text-align: left; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: var(--bg-elevated); cursor: pointer; transition: all 150ms ease;">
+                            <div style="font-weight: 700; font-size: 0.82rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.35rem;">
                                 <i class="fa-solid fa-store"></i>
                                 <span>Pay at Moonflower</span>
                             </div>
-                            <div style="font-size: 0.74rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.22rem;">
                                 Pay at Cashier on arrival
                             </div>
                         </button>
@@ -348,6 +359,9 @@
 
                 <!-- Online Payment Details Box -->
                 <div id="onlinePaymentBox" style="padding: 0.9rem 1rem; border-radius: var(--radius-md); background: var(--brand-accent-light); border: 1px solid var(--status-pending-border); display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div id="onlineAmountDueNotice" style="padding: 0.55rem 0.75rem; border-radius: var(--radius-sm); background: var(--bg-surface); border: 1px solid var(--border-subtle); font-size: 0.8rem; color: var(--brand-primary); font-weight: 600;">
+                        Reservation Downpayment Due Now: ₱0
+                    </div>
                     <div style="font-size: 0.82rem; color: var(--brand-primary);">
                         <strong><i class="fa-solid fa-wallet"></i> Moonflower GCash:</strong> {{ settings.gcash_number }}
                     </div>
@@ -363,7 +377,7 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
                         <div class="form-group">
                             <label for="custOnlineChannel" class="form-label">Online Channel</label>
-                            <select id="custOnlineChannel" class="form-select" style="background: #fff;">
+                            <select id="custOnlineChannel" class="form-select" style="background: var(--bg-surface);">
                                 <option value="GCash" selected>GCash</option>
                                 <option value="Maya">Maya</option>
                                 <option value="Bank Transfer">Bank Transfer</option>
@@ -371,15 +385,15 @@
                         </div>
                         <div class="form-group">
                             <label for="custPaymentRef" class="form-label">Payment Reference #</label>
-                            <input type="text" id="custPaymentRef" placeholder="e.g. 901238412" class="form-input" style="background: #fff;">
+                            <input type="text" id="custPaymentRef" placeholder="e.g. 901238412" class="form-input" style="background: var(--bg-surface);">
                         </div>
                     </div>
                     <div class="form-group" style="margin-top: 0.1rem;">
                         <label for="custPaymentProofFile" class="form-label">Upload GCash Receipt Screenshot (Optional)</label>
-                        <input type="file" id="custPaymentProofFile" accept="image/*" class="form-input" style="background: #fff; padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="compressCustProofPhoto(this)">
+                        <input type="file" id="custPaymentProofFile" accept="image/*" class="form-input" style="background: var(--bg-surface); padding: 0.4rem 0.6rem; font-size: 0.8rem;" onchange="compressCustProofPhoto(this)">
                         <input type="hidden" id="custPaymentProofData" value="">
                         <div id="custPaymentProofPreview" class="hidden" style="margin-top: 0.45rem;">
-                            <div style="display: flex; align-items: center; gap: 0.65rem; background: #fff; padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                            <div style="display: flex; align-items: center; gap: 0.65rem; background: var(--bg-surface); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
                                 <img id="custPaymentProofImg" src="" alt="Payment receipt proof" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-subtle);">
                                 <div style="flex: 1; font-size: 0.75rem; color: var(--brand-primary); font-weight: 600;">
                                     <i class="fa-solid fa-circle-check"></i> Screenshot ready for Cashier verification
@@ -407,9 +421,17 @@
                         <strong id="modalDurationText" style="text-align: right; max-width: 62%;">1 Night</strong>
                     </div>
                     <div id="modalFoodItemsBreakdown" style="font-size: 0.82rem; color: var(--text-secondary); padding: 0.45rem 0; display: none;"></div>
-                    <div class="receipt-row" style="border-bottom: none; padding-top: 0.6rem;">
+                    <div class="receipt-row">
                         <span style="font-weight: 700;">Total Amount:</span>
-                        <span id="modalTotalAmount" style="font-size: 1.25rem; font-weight: 700; color: var(--brand-primary);">₱0.00</span>
+                        <span id="modalTotalAmount" style="font-size: 1.12rem; font-weight: 700; color: var(--brand-primary);">₱0.00</span>
+                    </div>
+                    <div id="modalDpSummaryRow" class="receipt-row">
+                        <span style="color: var(--brand-accent); font-weight: 700;">Downpayment Due Now ({{ settings.get('downpayment_percent', '50') }}%):</span>
+                        <strong id="modalDownpaymentAmount" style="color: var(--brand-accent); font-size: 1.08rem;">₱0.00</strong>
+                    </div>
+                    <div id="modalBalanceSummaryRow" class="receipt-row" style="border-bottom: none; padding-top: 0.45rem;">
+                        <span style="color: var(--text-secondary);">Remaining Balance (On Arrival):</span>
+                        <strong id="modalBalanceDue" style="color: var(--text-primary);">₱0.00</strong>
                     </div>
                 </div>
 
@@ -855,7 +877,18 @@
             }
         }
 
+        const RESERVATION_DP_PERCENT = Math.max(10, Math.min(100, parseInt({{ settings.get('downpayment_percent', '50') | tojson }}, 10) || 50));
+        let currentCheckoutTotal = 0;
+
+        function computeDpAmounts(totalAmt) {
+            const total = Math.max(0, Number(totalAmt || 0));
+            const dp = Math.round((total * (RESERVATION_DP_PERCENT / 100)) * 100) / 100;
+            const bal = Math.max(0, Math.round((total - dp) * 100) / 100);
+            return { total, dp, bal };
+        }
+
         function openRoomBookingModal(roomId, type, number, total, nights) {
+            currentCheckoutTotal = Number(total || 0);
             document.getElementById('selectedItemId').value = roomId;
             document.getElementById('selectedBookingType').value = 'room';
             document.getElementById('modalEyebrow').innerText = 'Room Reservation';
@@ -866,7 +899,7 @@
             document.getElementById('modalFoodItemsBreakdown').style.display = 'none';
             document.getElementById('modalTotalAmount').innerText = `₱${Number(total).toLocaleString()}`;
             document.getElementById('modalSubmitBtn').className = 'btn btn-primary';
-            selectPaymentTiming('online');
+            selectPaymentTiming('downpayment');
             document.getElementById('bookingModal').classList.remove('hidden');
         }
 
@@ -1130,26 +1163,69 @@
         }
 
         function selectPaymentTiming(mode) {
-            document.getElementById('selectedPayTiming').value = mode;
+            const chosen = (mode === 'online' || mode === 'onsite') ? mode : 'downpayment';
+            document.getElementById('selectedPayTiming').value = chosen;
+
+            const dpBtn = document.getElementById('payOptDpBtn');
             const onlineBtn = document.getElementById('payOptOnlineBtn');
             const onsiteBtn = document.getElementById('payOptOnsiteBtn');
             const onlineBox = document.getElementById('onlinePaymentBox');
             const onsiteBox = document.getElementById('onsitePaymentBox');
+            const dueNotice = document.getElementById('onlineAmountDueNotice');
+            const dpRow = document.getElementById('modalDpSummaryRow');
+            const balRow = document.getElementById('modalBalanceSummaryRow');
+            const dpSub = document.getElementById('payOptDpSub');
 
-            if (mode === 'online') {
-                onlineBtn.style.border = '2px solid var(--brand-primary)';
-                onlineBtn.style.background = 'var(--brand-primary-light)';
-                onsiteBtn.style.border = '1px solid var(--border-subtle)';
-                onsiteBtn.style.background = 'var(--bg-elevated)';
+            const calc = computeDpAmounts(currentCheckoutTotal);
+            if (dpSub) {
+                dpSub.innerText = calc.total > 0 ? `Pay ₱${calc.dp.toLocaleString()} now to lock booking` : 'Pay partial now to reserve';
+            }
+            if (document.getElementById('modalDownpaymentAmount')) {
+                document.getElementById('modalDownpaymentAmount').innerText = `₱${calc.dp.toLocaleString()}`;
+            }
+            if (document.getElementById('modalBalanceDue')) {
+                document.getElementById('modalBalanceDue').innerText = `₱${(chosen === 'downpayment' ? calc.bal : (chosen === 'onsite' ? calc.total : 0)).toLocaleString()}`;
+            }
+
+            [dpBtn, onlineBtn, onsiteBtn].forEach(b => {
+                if (!b) return;
+                b.style.border = '1px solid var(--border-subtle)';
+                b.style.background = 'var(--bg-elevated)';
+            });
+
+            if (chosen === 'downpayment') {
+                if (dpBtn) {
+                    dpBtn.style.border = '2px solid var(--brand-primary)';
+                    dpBtn.style.background = 'var(--brand-primary-light)';
+                }
                 onlineBox.classList.remove('hidden');
                 onsiteBox.classList.add('hidden');
+                if (dueNotice) {
+                    dueNotice.innerHTML = `<i class="fa-solid fa-bookmark" style="color: var(--brand-accent); margin-right: 4px;"></i> Reservation Downpayment Due Now (${RESERVATION_DP_PERCENT}%): <strong>₱${calc.dp.toLocaleString()}</strong> &bull; Balance on Arrival: <strong>₱${calc.bal.toLocaleString()}</strong>`;
+                }
+                if (dpRow) dpRow.style.display = 'flex';
+                if (balRow) balRow.style.display = 'flex';
+            } else if (chosen === 'online') {
+                if (onlineBtn) {
+                    onlineBtn.style.border = '2px solid var(--brand-primary)';
+                    onlineBtn.style.background = 'var(--brand-primary-light)';
+                }
+                onlineBox.classList.remove('hidden');
+                onsiteBox.classList.add('hidden');
+                if (dueNotice) {
+                    dueNotice.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right: 4px;"></i> Full Online Payment Due Now (100%): <strong>₱${calc.total.toLocaleString()}</strong>`;
+                }
+                if (dpRow) dpRow.style.display = 'none';
+                if (balRow) balRow.style.display = 'none';
             } else {
-                onsiteBtn.style.border = '2px solid var(--brand-accent)';
-                onsiteBtn.style.background = 'var(--brand-accent-light)';
-                onlineBtn.style.border = '1px solid var(--border-subtle)';
-                onlineBtn.style.background = 'var(--bg-elevated)';
+                if (onsiteBtn) {
+                    onsiteBtn.style.border = '2px solid var(--brand-accent)';
+                    onsiteBtn.style.background = 'var(--brand-accent-light)';
+                }
                 onlineBox.classList.add('hidden');
                 onsiteBox.classList.remove('hidden');
+                if (dpRow) dpRow.style.display = 'none';
+                if (balRow) balRow.style.display = 'flex';
             }
         }
 
@@ -1170,6 +1246,7 @@
                 return;
             }
 
+            currentCheckoutTotal = Number(totalPrice || 0);
             const pax = Math.max(1, parseInt(document.getElementById('foodPax').value) || 1);
             const dateStr = foodDateEl.value;
             const arrivalTime = document.getElementById('foodArrivalTime').value;
@@ -1189,7 +1266,7 @@
 
             document.getElementById('modalTotalAmount').innerText = `₱${totalPrice.toLocaleString()}`;
             document.getElementById('modalSubmitBtn').className = 'btn btn-accent';
-            selectPaymentTiming('online');
+            selectPaymentTiming('downpayment');
             document.getElementById('bookingModal').classList.remove('hidden');
         }
 
@@ -1248,6 +1325,14 @@
 
         function showReceiptSlip(receipt) {
             lastReceiptRefCode = (receipt && receipt.reference_code) ? String(receipt.reference_code).trim() : '';
+            const plan = (receipt && receipt.payment_plan) ? receipt.payment_plan : 'full';
+            const dpPct = Number(receipt.downpayment_percent || RESERVATION_DP_PERCENT || 50);
+            const planLabel = plan === 'downpayment'
+                ? `Reservation Downpayment (${dpPct}%)`
+                : (plan === 'onsite' ? 'Pay at Moonflower (On Arrival)' : 'Pay Full Online (100%)');
+            const dpAmtNum = Number(receipt.downpayment_amount ?? 0);
+            const balAmtNum = Number(receipt.remaining_balance ?? 0);
+
             const box = document.getElementById('receiptDetailsBox');
             box.innerHTML = `
                 <div class="receipt-row">
@@ -1279,6 +1364,23 @@
                     <span style="color:var(--text-secondary);">Total Bill:</span>
                     <strong style="color:var(--brand-primary); font-size:1.05rem;">${escapeHtml(receipt.amount)}</strong>
                 </div>
+                <div class="receipt-row">
+                    <span style="color:var(--text-secondary);">Payment Plan:</span>
+                    <strong style="color:var(--text-primary);">${escapeHtml(planLabel)}</strong>
+                </div>
+                ${plan === 'downpayment' ? `
+                <div class="receipt-row">
+                    <span style="color:var(--text-secondary);">Downpayment Due Now:</span>
+                    <strong style="color:var(--brand-accent); font-size:0.98rem;">₱${dpAmtNum.toLocaleString()}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span style="color:var(--text-secondary);">Remaining Balance (Arrival):</span>
+                    <strong style="color:var(--text-primary);">₱${balAmtNum.toLocaleString()}</strong>
+                </div>` : (plan === 'onsite' ? `
+                <div class="receipt-row">
+                    <span style="color:var(--text-secondary);">Balance Due on Arrival:</span>
+                    <strong style="color:var(--text-primary);">₱${balAmtNum.toLocaleString()}</strong>
+                </div>` : '')}
                 <div class="receipt-row">
                     <span style="color:var(--text-secondary);">Payment Choice:</span>
                     <span>${escapeHtml(receipt.payment_method || 'GCash')} ${receipt.payment_ref ? '(Ref# ' + escapeHtml(receipt.payment_ref) + ')' : ''} ${receipt.has_payment_proof ? '<strong style="color:var(--status-confirmed-text);">(Screenshot Proof Attached)</strong>' : ''}</span>
@@ -1360,14 +1462,18 @@
             const notes = document.getElementById('custNotes').value;
 
             const payTiming = document.getElementById('selectedPayTiming').value;
-            const paymentMethod = payTiming === 'online'
+            const paymentPlan = payTiming === 'downpayment'
+                ? 'downpayment'
+                : (payTiming === 'online' ? 'full' : 'onsite');
+            const isOnlinePay = (payTiming === 'online' || payTiming === 'downpayment');
+            const paymentMethod = isOnlinePay
                 ? document.getElementById('custOnlineChannel').value
                 : 'Pay at Moonflower (On Arrival)';
-            const paymentRef = payTiming === 'online'
+            const paymentRef = isOnlinePay
                 ? document.getElementById('custPaymentRef').value.trim()
                 : '';
             const proofInput = document.getElementById('custPaymentProofData');
-            const paymentProof = (payTiming === 'online' && proofInput) ? proofInput.value : '';
+            const paymentProof = (isOnlinePay && proofInput) ? proofInput.value : '';
 
             if (type === 'room') {
                 const payload = {
@@ -1376,6 +1482,7 @@
                     phone: phone,
                     notes: notes,
                     payment_method: paymentMethod,
+                    payment_plan: paymentPlan,
                     payment_ref: paymentRef,
                     payment_proof: paymentProof,
                     check_in: roomCheckInEl.value,
@@ -1399,6 +1506,10 @@
                         title: `Room ${data.room_number} — ${data.room_type}`,
                         schedule: `${payload.check_in} → ${payload.check_out} (${data.nights} night/s)`,
                         amount: `₱${Number(data.total_price).toLocaleString()}`,
+                        payment_plan: data.payment_plan || paymentPlan,
+                        downpayment_percent: data.downpayment_percent || RESERVATION_DP_PERCENT,
+                        downpayment_amount: data.downpayment_amount,
+                        remaining_balance: data.remaining_balance,
                         payment_method: paymentMethod,
                         payment_ref: paymentRef,
                         has_payment_proof: Boolean(paymentProof),
@@ -1427,6 +1538,7 @@
                     items: itemsPayload,
                     notes: notes,
                     payment_method: paymentMethod,
+                    payment_plan: paymentPlan,
                     payment_ref: paymentRef,
                     payment_proof: paymentProof
                 };
@@ -1453,6 +1565,10 @@
                         schedule: `${data.date} | ${data.arrival_time}`,
                         seating: `${data.pax} Guests (${data.assigned_table})`,
                         amount: `₱${Number(data.total_price).toLocaleString()}`,
+                        payment_plan: data.payment_plan || paymentPlan,
+                        downpayment_percent: data.downpayment_percent || RESERVATION_DP_PERCENT,
+                        downpayment_amount: data.downpayment_amount,
+                        remaining_balance: data.remaining_balance,
                         payment_method: paymentMethod,
                         payment_ref: paymentRef,
                         has_payment_proof: Boolean(paymentProof),
@@ -1498,6 +1614,14 @@
                     const card = document.createElement('div');
                     card.className = 'search-bar-card';
                     card.style.marginBottom = '0';
+                    const dpRaw = Number(item.downpayment_amount_raw || 0);
+                    const balRaw = Number(item.remaining_balance_raw || 0);
+                    const dpLabel = item.payment_plan === 'downpayment' && dpRaw > 0
+                        ? ` &bull; DP Req: <strong style="color:var(--brand-accent);">${escapeHtml(item.downpayment_amount)}</strong>`
+                        : '';
+                    const balLabel = balRaw > 0
+                        ? ` &bull; Balance: <strong style="color:var(--text-primary);">${escapeHtml(item.remaining_balance)}</strong>`
+                        : '';
                     card.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem;">
                             <div style="max-width: 72%;">
@@ -1511,7 +1635,7 @@
                                     <i class="fa-solid fa-chair"></i> Reserved Setup: ${escapeHtml(item.seating_info)}
                                 </p>
                                 <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.25rem;">
-                                    Payment: <strong>${escapeHtml(item.payment_status)}</strong> (Verified Paid: ${escapeHtml(item.amount_paid)} via ${escapeHtml(item.payment_method)})
+                                    Payment: <strong>${escapeHtml(item.payment_status)}</strong> (Paid: ${escapeHtml(item.amount_paid)} via ${escapeHtml(item.payment_method)})${dpLabel}${balLabel}
                                     ${item.has_payment_proof ? '<span class="status-badge status-confirmed" style="font-size:0.65rem; margin-left:0.35rem;"><i class="fa-solid fa-image"></i> Proof Uploaded</span>' : ''}
                                     &bull; Staff: <strong>${escapeHtml(item.handled_by)}</strong>
                                 </p>
@@ -1519,6 +1643,7 @@
                             <div style="text-align:right;">
                                 <span class="status-badge status-${escapeHtml(item.status)}">${escapeHtml(item.status.toUpperCase())}</span>
                                 <div style="font-weight:700; font-size:1.1rem; margin-top:0.4rem; color:var(--brand-primary);">${escapeHtml(item.amount)}</div>
+                                ${balRaw > 0 ? `<div style="font-size:0.74rem; color:var(--brand-accent); font-weight:600;">Bal: ${escapeHtml(item.remaining_balance)}</div>` : ''}
                             </div>
                         </div>
                     `;
@@ -1533,7 +1658,7 @@
             document.getElementById('bookingModal').classList.add('hidden');
             document.getElementById('modalForm').reset();
             clearCustProofPhoto();
-            selectPaymentTiming('online');
+            selectPaymentTiming('downpayment');
         }
 
         function closeReceiptModal() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moonflower-pwa-v14';
+const CACHE_NAME = 'moonflower-pwa-v15';
 const STATIC_ASSETS = [
   '/static/style.css',
   '/static/qrcode.js',
