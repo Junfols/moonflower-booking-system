@@ -62,6 +62,12 @@
                 <a href="/" style="color: var(--brand-primary); text-decoration: none; font-weight: 600;">&larr; Customer Portal</a>
                 <a href="/cashier" style="color: var(--brand-accent); text-decoration: none; font-weight: 600;">Cashier Terminal &rarr;</a>
             </div>
+            <div style="margin-top: 0.85rem; text-align: center;">
+                <button type="button" onclick="openAppQrModal()" class="btn btn-outline btn-sm" style="border-radius: 999px; width: 100%;">
+                    <i class="fa-solid fa-qrcode"></i>
+                    <span>Share App QR Code</span>
+                </button>
+            </div>
         </div>
     </main>
 
@@ -87,6 +93,10 @@
             </div>
 
             <div class="nav-actions">
+                <button type="button" id="adminShareQrBtn" onclick="openAppQrModal()" class="btn btn-outline btn-sm" title="Show App QR Code to Share">
+                    <i class="fa-solid fa-qrcode"></i>
+                    <span>Share QR</span>
+                </button>
                 <a href="/cashier" class="btn btn-outline btn-sm" title="Open Cashier Terminal">
                     <i class="fa-solid fa-cash-register"></i>
                     <span>Cashier View</span>
@@ -1728,5 +1738,7 @@
         }, 15000);
     </script>
     {% endif %}
+    <script src="/static/qrcode.js"></script>
+    <script src="/static/qr-share.js"></script>
 </body>
 </html>

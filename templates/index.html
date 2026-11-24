@@ -43,6 +43,10 @@
                     <i class="fa-solid fa-download"></i>
                     <span>Install App</span>
                 </button>
+                <button type="button" onclick="openAppQrModal()" class="btn btn-outline btn-sm" id="shareAppQrBtn" title="Show QR Code to Share App">
+                    <i class="fa-solid fa-qrcode"></i>
+                    <span>QR<span class="nav-hide-mobile"> Share</span></span>
+                </button>
                 <button type="button" onclick="switchTab('lookup')" class="btn btn-outline btn-sm" id="navTrackBookingBtn">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <span class="nav-hide-mobile">Track Booking</span>
@@ -1568,5 +1572,7 @@
             }
         });
     </script>
+    <script src="/static/qrcode.js"></script>
+    <script src="/static/qr-share.js"></script>
 </body>
 </html>
